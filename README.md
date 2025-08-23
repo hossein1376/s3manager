@@ -5,7 +5,7 @@
 
 A Web GUI written in Go to manage S3 buckets from any provider.
 
-![Screenshot](https://raw.githubusercontent.com/cloudlena/s3manager/main/screenshot.png)
+![Screenshot](assets/screenshot.png)
 
 ## Features
 
