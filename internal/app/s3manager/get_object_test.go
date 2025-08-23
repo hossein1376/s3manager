@@ -9,11 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloudlena/s3manager/internal/app/s3manager"
-	"github.com/cloudlena/s3manager/internal/app/s3manager/mocks"
 	"github.com/gorilla/mux"
 	"github.com/matryer/is"
 	"github.com/minio/minio-go/v7"
+
+	"github.com/hossein1376/s3manager/internal/app/s3manager"
+	"github.com/hossein1376/s3manager/internal/app/s3manager/mocks"
 )
 
 func TestHandleGetObject(t *testing.T) {

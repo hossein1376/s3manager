@@ -8,9 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloudlena/s3manager/internal/app/s3manager"
-	"github.com/cloudlena/s3manager/internal/app/s3manager/mocks"
 	"github.com/matryer/is"
+
+	"github.com/hossein1376/s3manager/internal/app/s3manager"
+	"github.com/hossein1376/s3manager/internal/app/s3manager/mocks"
 )
 
 func TestHandleDeleteBucket(t *testing.T) {

@@ -14,7 +14,9 @@ import (
 )
 
 // HandleBucketView shows the details page of a bucket.
-func HandleBucketView(s3 S3, templates fs.FS, allowDelete bool, listRecursive bool) http.HandlerFunc {
+func HandleBucketView(
+	s3 S3, templates fs.FS, allowDelete bool, listRecursive bool,
+) http.HandlerFunc {
 	type objectWithIcon struct {
 		Key          string
 		Size         int64

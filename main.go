@@ -11,11 +11,12 @@ import (
 	"time"
 
 	"github.com/cloudlena/adapters/logging"
-	"github.com/cloudlena/s3manager/internal/app/s3manager"
 	"github.com/gorilla/mux"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/spf13/viper"
+
+	"github.com/hossein1376/s3manager/internal/app/s3manager"
 )
 
 //go:embed web/template

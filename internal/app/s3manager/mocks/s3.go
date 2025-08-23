@@ -5,7 +5,7 @@ package mocks
 
 import (
 	"context"
-	"github.com/cloudlena/s3manager/internal/app/s3manager"
+	"github.com/hossein1376/s3manager/internal/app/s3manager"
 	"github.com/minio/minio-go/v7"
 	"io"
 	"net/url"
