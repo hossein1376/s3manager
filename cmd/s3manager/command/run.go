@@ -5,13 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 
 	"github.com/minio/minio-go/v7"
 
 	"github.com/hossein1376/s3manager/internal/config"
+	"github.com/hossein1376/s3manager/internal/handlers"
 )
 
 func Run() error {
@@ -26,17 +26,14 @@ func Run() error {
 		return fmt.Errorf("new config: %w", err)
 	}
 
-	client, err := minio.New(cfg.S3.Endpoint, cfg.MinioOpts())
+	s3, err := minio.New(cfg.S3.Endpoint, cfg.MinioOpts())
 	if err != nil {
 		return fmt.Errorf("creating s3 client: %w", err)
 	}
-	_ = client
 
-	srv := &http.Server{
-		Addr:         cfg.Server.Address,
-		Handler:      nil, // TODO
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
+	srv, err := handlers.NewServer(cfg, s3)
+	if err != nil {
+		return fmt.Errorf("new server: %w", err)
 	}
 
 	errCh := make(chan error)

@@ -65,10 +65,13 @@ type Config struct {
 }
 
 type S3 struct {
-	Endpoint        string `yaml:"endpoint"`
-	AccessKeyID     string `yaml:"access_key_id"`
-	SecretAccessKey string `yaml:"secret_access_key"`
-	Region          string `yaml:"region"`
+	Endpoint             string `yaml:"endpoint"`
+	AccessKeyID          string `yaml:"access_key_id"`
+	SecretAccessKey      string `yaml:"secret_access_key"`
+	Region               string `yaml:"region"`
+	DisableListRecursive bool   `yaml:"disable_list_recursive"`
+	DisableDelete        bool   `yaml:"disable_delete"`
+	DisableForceDownload bool   `json:"disable_force_download"`
 }
 
 type IAM struct {
@@ -77,16 +80,14 @@ type IAM struct {
 }
 
 type SSE struct {
-	Key  string `yaml:"key"`
-	Type string `yaml:"type"`
+	Enabled bool   `yaml:"enabled"`
+	Key     string `yaml:"key"`
+	Type    string `yaml:"type"`
 }
 
 type ConnectionOptions struct {
-	DisableDelete        bool `yaml:"disable_delete"`
-	DisableForceDownload bool `json:"disable_force_download"`
-	SkipSSL              bool `yaml:"skip_ssl"`
-	SkipSSLVerification  bool `yaml:"skip_ssl_verification"`
-	DisableListRecursive bool `yaml:"disable_list_recursive"`
+	SkipSSL             bool `yaml:"skip_ssl"`
+	SkipSSLVerification bool `yaml:"skip_ssl_verification"`
 }
 
 type Server struct {

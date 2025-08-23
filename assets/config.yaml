@@ -1,20 +1,23 @@
-endpoint: "s3.amazonaws.com"
+s3:
+  endpoint: "s3.amazonaws.com"
+  access_key: ""
+  secret_access_key: ""
+  region: ""
+  signature_type: v4
+  disable_delete: false
+  disable_force_download: false
+  disable_list_recursive: false
 iam:
   enabled: false
   endpoint: ""
-access_key: ""
-secret_access_key: ""
-region: ""
-signature_type: v4
 server:
   address: 127.0.0.1:8080
-timeout: 600s
+  read-timeout: 600s
+  write-timeout: 600s
 sse:
+  enabled: false
   type: ""
   key: ""
 connection_options:
-  disable_delete: false
-  disable_force_download: false
   skip_ssl: false
   skip_ssl_verification: false
-  disable_list_recursive: false
