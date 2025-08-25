@@ -4,6 +4,7 @@ go 1.24.5
 
 require (
 	github.com/cloudlena/adapters v0.0.0-20250728121319-727f6c720317
+	github.com/goccy/go-yaml v1.18.0
 	github.com/gorilla/mux v1.8.1
 	github.com/matryer/is v1.4.1
 	github.com/minio/minio-go/v7 v7.0.95
@@ -16,7 +17,6 @@ require (
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
-	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect

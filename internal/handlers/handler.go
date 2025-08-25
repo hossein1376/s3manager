@@ -54,11 +54,11 @@ func newRouter(h *Handler) *mux.Router {
 		).
 		Methods(http.MethodGet)
 
-	r.HandleFunc("/buckets", h.BucketsViewHandler).
+	r.HandleFunc("/buckets", h.ListBucketsHandler).
 		Methods(http.MethodGet)
 
 	r.PathPrefix("/buckets/").
-		HandlerFunc(h.BucketViewHandler).
+		HandlerFunc(h.ViewBucketHandler).
 		Methods(http.MethodGet)
 
 	r.HandleFunc("/api/buckets", h.CreateBucketHandler).

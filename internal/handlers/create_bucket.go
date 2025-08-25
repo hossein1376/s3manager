@@ -6,27 +6,27 @@ import (
 	"net/http"
 
 	"github.com/minio/minio-go/v7"
+
+	"github.com/hossein1376/s3manager/internal/handlers/serde"
 )
 
 func (h *Handler) CreateBucketHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var bucket minio.BucketInfo
 	err := json.NewDecoder(r.Body).Decode(&bucket)
 	if err != nil {
-		handleHTTPError(w, fmt.Errorf("decoding body JSON: %w", err))
+		resp := serde.Response{
+			Message: fmt.Sprintf("decoding body JSON: %s", err),
+		}
+		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
 		return
 	}
 
-	err = h.s3.MakeBucket(r.Context(), bucket.Name, minio.MakeBucketOptions{})
+	err = h.s3.MakeBucket(ctx, bucket.Name, minio.MakeBucketOptions{})
 	if err != nil {
-		handleHTTPError(w, fmt.Errorf("making bucket: %w", err))
+		serde.ExtractAndWrite(ctx, w, fmt.Errorf("making bucket: %w", err))
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(bucket)
-	if err != nil {
-		handleHTTPError(w, fmt.Errorf("encoding JSON: %w", err))
-		return
-	}
+	serde.WriteJson(ctx, w, http.StatusNoContent, nil)
 }

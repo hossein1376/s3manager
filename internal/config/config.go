@@ -66,7 +66,7 @@ type Config struct {
 
 type S3 struct {
 	Endpoint             string `yaml:"endpoint"`
-	AccessKeyID          string `yaml:"access_key_id"`
+	AccessKeyID          string `yaml:"access_key"`
 	SecretAccessKey      string `yaml:"secret_access_key"`
 	Region               string `yaml:"region"`
 	DisableListRecursive bool   `yaml:"disable_list_recursive"`

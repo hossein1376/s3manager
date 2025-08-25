@@ -1,7 +1,7 @@
 s3:
-  endpoint: "s3.amazonaws.com"
-  access_key: ""
-  secret_access_key: ""
+  endpoint: 127.0.0.1:9000
+  access_key: minio
+  secret_access_key: minio123
   region: ""
   signature_type: v4
   disable_delete: false
@@ -19,5 +19,5 @@ sse:
   type: ""
   key: ""
 connection_options:
-  skip_ssl: false
-  skip_ssl_verification: false
+  skip_ssl: true
+  skip_ssl_verification: true

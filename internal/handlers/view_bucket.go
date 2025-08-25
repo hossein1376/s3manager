@@ -11,6 +11,7 @@ import (
 
 	"github.com/minio/minio-go/v7"
 
+	"github.com/hossein1376/s3manager/internal/handlers/serde"
 	"github.com/hossein1376/s3manager/pkg/icons"
 )
 
@@ -19,42 +20,51 @@ var (
 )
 
 type objectWithIcon struct {
+	Icon         string
+	DisplayName  string
 	Key          string
 	Size         int64
-	LastModified time.Time
 	Owner        string
-	Icon         string
 	IsFolder     bool
-	DisplayName  string
+	LastModified time.Time
 }
 
-type pageData struct {
+type viewBucketData struct {
 	BucketName  string
-	Objects     []objectWithIcon
+	CurrentPath string
 	AllowDelete bool
 	Paths       []string
-	CurrentPath string
+	Objects     []objectWithIcon
 }
 
-func (h *Handler) BucketViewHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ViewBucketHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	matches := bucketsRegEx.FindStringSubmatch(r.RequestURI)
 	if len(matches) != 3 {
-		// TODO ?
+		resp := serde.Response{
+			Message: fmt.Sprintf("Invalid bucket URI: %s", r.RequestURI),
+		}
+		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
+		return
 	}
 	bucketName := matches[1]
 	prefix := matches[2]
 
-	var objs []objectWithIcon
 	doneCh := make(chan struct{})
 	defer close(doneCh)
+
+	var objs []objectWithIcon
 	opts := minio.ListObjectsOptions{
 		Recursive: !h.cfg.S3.DisableListRecursive,
 		Prefix:    prefix,
 	}
-	objectCh := h.s3.ListObjects(r.Context(), bucketName, opts)
+
+	objectCh := h.s3.ListObjects(ctx, bucketName, opts)
 	for object := range objectCh {
 		if object.Err != nil {
-			handleHTTPError(w, fmt.Errorf("listing objects: %w", object.Err))
+			serde.ExtractAndWrite(
+				ctx, w, fmt.Errorf("listing objects: %w", object.Err),
+			)
 			return
 		}
 
@@ -69,7 +79,7 @@ func (h *Handler) BucketViewHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		objs = append(objs, obj)
 	}
-	data := pageData{
+	data := viewBucketData{
 		BucketName:  bucketName,
 		Objects:     objs,
 		AllowDelete: !h.cfg.S3.DisableDelete,
@@ -82,12 +92,14 @@ func (h *Handler) BucketViewHandler(w http.ResponseWriter, r *http.Request) {
 
 	t, err := template.ParseFS(h.templates, "layout.html.tmpl", "bucket.html.tmpl")
 	if err != nil {
-		handleHTTPError(w, fmt.Errorf("parsing template files: %w", err))
+		serde.InternalErrWrite(
+			ctx, w, fmt.Errorf("parsing template files: %w", err),
+		)
 		return
 	}
 	err = t.ExecuteTemplate(w, "layout", data)
 	if err != nil {
-		handleHTTPError(w, fmt.Errorf("executing template: %w", err))
+		serde.InternalErrWrite(ctx, w, fmt.Errorf("executing template: %w", err))
 		return
 	}
 }

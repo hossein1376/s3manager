@@ -3,22 +3,31 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
+
+	"github.com/hossein1376/s3manager/internal/handlers/serde"
 )
 
 func (h *Handler) DeleteBucketHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if h.cfg.S3.DisableDelete {
-		w.WriteHeader(http.StatusForbidden)
+		serde.WriteJson(ctx, w, http.StatusForbidden, nil)
 		return
 	}
 
-	bucketName := mux.Vars(r)["bucketName"]
-	err := h.s3.RemoveBucket(r.Context(), bucketName)
+	bucketName := strings.TrimSpace(mux.Vars(r)["bucketName"])
+	if bucketName == "" {
+		resp := serde.Response{Message: "bucket name is required"}
+		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
+		return
+	}
+	err := h.s3.RemoveBucket(ctx, bucketName)
 	if err != nil {
-		handleHTTPError(w, fmt.Errorf("removing bucket: %w", err))
+		serde.ExtractAndWrite(ctx, w, fmt.Errorf("removing bucket: %w", err))
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	serde.WriteJson(ctx, w, http.StatusNoContent, nil)
 }
