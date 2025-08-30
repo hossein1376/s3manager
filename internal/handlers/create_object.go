@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/encrypt"
 
@@ -24,7 +23,7 @@ type createObjectData struct {
 
 func (h *Handler) CreateObjectHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	bucketName := strings.TrimSpace(mux.Vars(r)["bucketName"])
+	bucketName := chi.URLParam(r, BucketName)
 	if bucketName == "" {
 		resp := serde.Response{Message: "bucket name is required"}
 		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
@@ -83,5 +82,4 @@ func (h *Handler) CreateObjectHandler(w http.ResponseWriter, r *http.Request) {
 		LastModified: obj.LastModified,
 	}}
 	serde.WriteJson(ctx, w, http.StatusCreated, resp)
-	w.WriteHeader(http.StatusCreated)
 }

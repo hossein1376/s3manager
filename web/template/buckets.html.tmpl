@@ -8,7 +8,25 @@
 <div class="container">
     <div class="section">
         <div class="row">
+            <form method="get" class="col s12">
+                <div>
+                    <label>
+                        <input type="text"
+                               name="filter"
+                               value="{{.Filter}}"
+                               placeholder="Search in buckets..."
+                               autocomplete="off"
+                        />
+                    </label>
+                </div>
+                <button
+                        type="submit"
+                        id="search-button"
+                        class="waves-effect waves-light btn">
+                    Filter
+                </button>
 
+            </form>
             {{ if .Buckets }}
             {{ range $bucket := .Buckets }}
             <div class="col l6 m12">
@@ -34,7 +52,8 @@
             {{ end }}
 
             {{ if not .Buckets }}
-            <p style="text-align:center;margin-top:2em;color:gray;">No buckets yet</p>
+                <p style="text-align:center;margin-top:2em;color:gray;">No
+                    buckets found</p>
             {{ end }}
 
         </div>

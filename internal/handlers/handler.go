@@ -5,11 +5,17 @@ import (
 	"io/fs"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/minio/minio-go/v7"
 
 	"github.com/hossein1376/s3manager/internal/config"
 	"github.com/hossein1376/s3manager/web"
+)
+
+const (
+	BucketName = "bucketName"
+	ObjectName = "objectName"
 )
 
 type Handler struct {
@@ -41,49 +47,34 @@ func NewServer(
 	}, nil
 }
 
-func newRouter(h *Handler) *mux.Router {
-	r := mux.NewRouter()
+func newRouter(h *Handler) chi.Router {
+	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
 
-	r.Handle("/", http.RedirectHandler(
-		"/buckets", http.StatusPermanentRedirect),
-	).Methods(http.MethodGet)
-
-	r.PathPrefix("/static/").
-		Handler(
-			http.StripPrefix("/static/", http.FileServer(http.FS(h.statics))),
-		).
-		Methods(http.MethodGet)
-
-	r.HandleFunc("/buckets", h.ListBucketsHandler).
-		Methods(http.MethodGet)
-
-	r.PathPrefix("/buckets/").
-		HandlerFunc(h.ViewBucketHandler).
-		Methods(http.MethodGet)
-
-	r.HandleFunc("/api/buckets", h.CreateBucketHandler).
-		Methods(http.MethodPost)
-
-	r.HandleFunc("/api/buckets/{bucketName}", h.DeleteBucketHandler).
-		Methods(http.MethodDelete)
-
-	r.HandleFunc("/api/buckets/{bucketName}/objects", h.CreateObjectHandler).
-		Methods(http.MethodPost)
-
-	r.HandleFunc(
-		"/api/buckets/{bucketName}/objects/{objectName:.*}/url",
+	r.Handle(
+		"GET /", http.RedirectHandler("/buckets", http.StatusPermanentRedirect),
+	)
+	r.Handle(
+		"GET /static/*",
+		http.StripPrefix("/static/", http.FileServer(http.FS(h.statics))),
+	)
+	r.Get("/buckets", h.ListBucketsHandler)
+	r.Get("/buckets/*", h.ViewBucketHandler)
+	r.Post("/api/buckets", h.CreateBucketHandler)
+	r.Delete("/api/buckets/{bucketName}", h.DeleteBucketHandler)
+	r.Post("/api/buckets/{bucketName}/objects", h.CreateObjectHandler)
+	r.Get(
+		"/api/buckets/{bucketName}/objects/{objectName}/url",
 		h.GenerateURLHandler,
-	).Methods(http.MethodGet)
-
-	r.HandleFunc(
-		"/api/buckets/{bucketName}/objects/{objectName:.*}",
+	)
+	r.Get(
+		"/api/buckets/{bucketName}/objects/{objectName}",
 		h.GetObjectHandler,
-	).Methods(http.MethodGet)
-
-	r.HandleFunc(
-		"/api/buckets/{bucketName}/objects/{objectName:.*}",
+	)
+	r.Delete(
+		"/api/buckets/{bucketName}/objects/{objectName}",
 		h.DeleteObjectHandle,
-	).Methods(http.MethodDelete)
+	)
 
 	return r
 }

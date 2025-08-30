@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/hossein1376/s3manager/internal/handlers/serde"
 )
@@ -17,7 +17,7 @@ func (h *Handler) DeleteBucketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bucketName := strings.TrimSpace(mux.Vars(r)["bucketName"])
+	bucketName := strings.TrimSpace(chi.URLParam(r, BucketName))
 	if bucketName == "" {
 		resp := serde.Response{Message: "bucket name is required"}
 		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)

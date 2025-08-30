@@ -6,19 +6,17 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/hossein1376/s3manager/internal/handlers/serde"
 )
 
 func (h *Handler) GenerateURLHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	vars := mux.Vars(r)
-	bucketName := strings.TrimSpace(vars["bucketName"])
-	objectName := strings.TrimSpace(vars["objectName"])
+	bucketName := chi.URLParam(r, BucketName)
+	objectName := chi.URLParam(r, ObjectName)
 	expiry := r.URL.Query().Get("expiry")
 	if bucketName == "" || objectName == "" {
 		resp := serde.Response{

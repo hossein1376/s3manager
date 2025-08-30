@@ -35,8 +35,54 @@
         <a href="{{ $url }}" class="breadcrumb">{{ $path }}</a>
         {{ end }}
     </div>
-  </div>
 </nav>
+
+<div>
+    <form method="get" class="container">
+        <div>
+            <label>
+                <input type="text"
+                       name="filter"
+                       value="{{.Filter}}"
+                       placeholder="Search..."
+                       autocomplete="off"/>
+            </label>
+            <div>
+                <label>
+                    <br>
+                    <span>Count</span>
+                    <select class="browser-default" name="count">
+                        <option value="50" {{ if eq $.Count "50" }}selected{{ end }}>50</option>
+                        <option value="100" {{ if eq $.Count "100" }}selected{{ end }}>100</option>
+                        <option value="200" {{ if eq $.Count "200" }}selected{{ end }}>200</option>
+                        <option value="500" {{ if eq $.Count "500" }}selected{{ end }}>500</option>
+                        <option value="1000" {{ if eq $.Count "1000" }}selected{{ end }}>1000</option>
+                        <option value="0" {{ if eq $.Count "0" }}selected{{ end }}>All</option>
+                    </select>
+                </label>
+                <label>
+                    <input type="checkbox"
+                           class="filled-in"
+                           name="recursive"
+                            {{ if .Recursive }}
+                                checked="checked"
+                            {{ end }}
+                           value="true"
+                    />
+                    <span>Recursive</span>
+                </label>
+            </div>
+        </div>
+        <div>
+            <button
+                    type="submit"
+                    id="search-button"
+                    class="waves-effect waves-light btn">
+                Filter
+            </button>
+        </div>
+    </form>
+</div>
 
 <div class="section" style="margin: 10px; position: relative;">
     {{ if .Objects }}
@@ -56,7 +102,7 @@
             <tr>
                 <td
                     {{ if $object.IsFolder }}
-                    onclick="location.href='/buckets/{{ $.BucketName }}/{{ $object.Key }}'"}
+                    onclick="location.href='/buckets/{{ $.BucketName }}{{ $.CurrentPath }}{{ $object.Key }}'"
                     style="cursor:pointer;"
                     {{ end }}>
                     <i class="material-icons">{{ $object.Icon }}</i> {{ $object.DisplayName }}

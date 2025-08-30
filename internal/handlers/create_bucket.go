@@ -21,6 +21,14 @@ func (h *Handler) CreateBucketHandler(w http.ResponseWriter, r *http.Request) {
 		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
 		return
 	}
+	name := bucket.Name
+	if len(name) < 3 {
+		resp := serde.Response{
+			Message: "Bucket name cannot be shorter than 3 characters",
+		}
+		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
+		return
+	}
 
 	err = h.s3.MakeBucket(ctx, bucket.Name, minio.MakeBucketOptions{})
 	if err != nil {

@@ -46,7 +46,7 @@ func ExtractAndWrite(ctx context.Context, w http.ResponseWriter, err error) {
 	}
 	var opError *net.OpError
 	if errors.As(err, &opError) && errors.Is(opError.Err, syscall.ECONNREFUSED) {
-		resp := RemoteResponse{Server: "MinIo", Message: "server is down"}
+		resp := RemoteResponse{Server: "MinIo", Message: "failed to connect"}
 		WriteJson(ctx, w, http.StatusBadGateway, resp)
 		return
 	}

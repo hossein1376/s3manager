@@ -4,19 +4,16 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/minio/minio-go/v7"
 
 	"github.com/hossein1376/s3manager/internal/handlers/serde"
 	"github.com/hossein1376/s3manager/pkg/icons"
-)
-
-var (
-	bucketsRegEx = regexp.MustCompile(`/buckets/([^/]*)/?(.*)`)
 )
 
 type objectWithIcon struct {
@@ -30,6 +27,9 @@ type objectWithIcon struct {
 }
 
 type viewBucketData struct {
+	Filter      string
+	Count       string
+	Recursive   bool
 	BucketName  string
 	CurrentPath string
 	AllowDelete bool
@@ -39,24 +39,47 @@ type viewBucketData struct {
 
 func (h *Handler) ViewBucketHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	matches := bucketsRegEx.FindStringSubmatch(r.RequestURI)
-	if len(matches) != 3 {
-		resp := serde.Response{
-			Message: fmt.Sprintf("Invalid bucket URI: %s", r.RequestURI),
+	query := r.URL.Query()
+	filter := query.Get("filter")
+	recursive := query.Get("recursive") == "true"
+	countQuery := query.Get("count")
+
+	count := 50
+	if countQuery != "" {
+		var err error
+		count, err = strconv.Atoi(countQuery)
+		if err != nil {
+			serde.WriteJson(
+				ctx, w, http.StatusBadRequest, serde.Response{Message: "bad count"},
+			)
+			return
 		}
-		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
+	}
+
+	var bucketName, path string
+	switch args := strings.SplitN(chi.URLParam(r, "*"), "/", 2); len(args) {
+	case 1:
+		bucketName = args[0]
+	case 2:
+		bucketName = args[0]
+		path = strings.TrimPrefix(args[1], "/")
+	default:
+		serde.WriteJson(
+			ctx,
+			w,
+			http.StatusBadRequest,
+			serde.Response{Message: "bad path parameter"},
+		)
 		return
 	}
-	bucketName := matches[1]
-	prefix := matches[2]
 
 	doneCh := make(chan struct{})
 	defer close(doneCh)
 
-	var objs []objectWithIcon
+	objs := make([]objectWithIcon, 0, count)
 	opts := minio.ListObjectsOptions{
-		Recursive: !h.cfg.S3.DisableListRecursive,
-		Prefix:    prefix,
+		Recursive: recursive,
+		Prefix:    path + filter,
 	}
 
 	objectCh := h.s3.ListObjects(ctx, bucketName, opts)
@@ -68,6 +91,10 @@ func (h *Handler) ViewBucketHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if count != 0 && len(objs) > count {
+			break
+		}
+
 		obj := objectWithIcon{
 			Key:          object.Key,
 			Size:         object.Size,
@@ -75,19 +102,28 @@ func (h *Handler) ViewBucketHandler(w http.ResponseWriter, r *http.Request) {
 			Owner:        object.Owner.DisplayName,
 			Icon:         icons.Detect(object.Key).String(),
 			IsFolder:     strings.HasSuffix(object.Key, "/"),
-			DisplayName:  strings.TrimSuffix(strings.TrimPrefix(object.Key, prefix), "/"),
+			DisplayName:  strings.TrimPrefix(object.Key, path),
 		}
 		objs = append(objs, obj)
 	}
+	paths := slices.DeleteFunc(
+		strings.Split(path, "/"),
+		func(s string) bool { return s == "" },
+	)
+	current := "/"
+	if len(paths) > 1 {
+		current = paths[len(paths)-1]
+	}
+
 	data := viewBucketData{
+		Filter:      filter,
+		Recursive:   recursive,
 		BucketName:  bucketName,
 		Objects:     objs,
 		AllowDelete: !h.cfg.S3.DisableDelete,
-		Paths: slices.DeleteFunc(
-			strings.Split(prefix, "/"),
-			func(s string) bool { return s == "" },
-		),
-		CurrentPath: prefix,
+		Paths:       paths,
+		CurrentPath: current,
+		Count:       countQuery,
 	}
 
 	t, err := template.ParseFS(h.templates, "layout.html.tmpl", "bucket.html.tmpl")
