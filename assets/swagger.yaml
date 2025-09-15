@@ -1,0 +1,357 @@
+info:
+  title: S3 Manager
+  version: 1.0.0
+  description: s3manager
+tags:
+  - name: bucket
+  - name: buckets
+paths:
+  /buckets:
+    get:
+      operationId: listBuckets
+      tags:
+        - buckets
+      summary: List buckets
+      responses:
+        "200":
+          description: The request was successful, and the server has returned the
+            requested resource in the response body.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  list:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Bucket"
+                  next_token:
+                    type: string
+                required:
+                  - list
+      parameters:
+        - in: query
+          name: filter
+          required: false
+          style: form
+          description: ""
+          explode: true
+          schema:
+            type: string
+          allowReserved: false
+        - in: query
+          name: count
+          required: false
+          style: form
+          description: ""
+          explode: true
+          schema:
+            type: integer
+          allowReserved: false
+        - in: query
+          name: token
+          required: false
+          style: form
+          description: ""
+          explode: true
+          schema:
+            type: string
+          allowReserved: false
+    post:
+      operationId: createANewBucket
+      tags:
+        - buckets
+      summary: Create a new bucket
+      responses:
+        "204":
+          $ref: "#/components/responses/No Content"
+      requestBody:
+        required: true
+        description: ""
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+              required:
+                - name
+      parameters: []
+  /buckets/{bucket_name}:
+    delete:
+      operationId: deleteABucket
+      tags:
+        - buckets
+      summary: Delete a bucket
+      responses:
+        "204":
+          description: The request was successful, but there is no content to return in
+            the response.
+          content:
+            application/json:
+              schema:
+                type: "null"
+      parameters:
+        - $ref: "#/components/parameters/bucket_name"
+    get:
+      operationId: listObjects
+      tags:
+        - bucket
+      summary: List objects
+      parameters:
+        - in: query
+          name: count
+          required: false
+          style: form
+          description: ""
+          explode: true
+          schema:
+            type: integer
+          allowReserved: false
+        - in: query
+          name: filter
+          required: false
+          style: form
+          description: ""
+          explode: true
+          schema:
+            type: string
+          allowReserved: false
+        - in: query
+          name: token
+          required: false
+          style: form
+          description: ""
+          explode: true
+          schema:
+            type: string
+          allowReserved: false
+        - $ref: "#/components/parameters/bucket_name"
+      responses:
+        "200":
+          description: The request was successful, and the server has returned the
+            requested resource in the response body.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  list:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Object"
+                  next_token:
+                    type: string
+                required:
+                  - list
+  /buckets/{bucket_name}/objects:
+    put:
+      operationId: createOrReplaceAFile
+      tags:
+        - bucket
+      summary: Create or replace a file
+      parameters:
+        - $ref: "#/components/parameters/bucket_name"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+      requestBody:
+        required: true
+        description: ""
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                key:
+                  type: string
+                file:
+                  type: array
+                  items:
+                    type: integer
+                  description: Binary file
+              required:
+                - key
+                - file
+  /buckets/{bucket_name}/objects/{object_key}:
+    delete:
+      operationId: deleteAnObject
+      tags:
+        - bucket
+      summary: Delete an object
+      parameters:
+        - $ref: "#/components/parameters/bucket_name"
+        - $ref: "#/components/parameters/object_key"
+      responses:
+        "204":
+          description: The request was successful, but there is no content to return in
+            the response.
+          content:
+            application/json:
+              schema:
+                type: "null"
+    get:
+      operationId: getAnObject
+      tags:
+        - bucket
+      summary: Get an object
+      parameters:
+        - $ref: "#/components/parameters/bucket_name"
+        - $ref: "#/components/parameters/object_key"
+      responses:
+        "200":
+          description: The request was successful, and the server has returned the
+            requested resource in the response body.
+          content:
+            application/octet-stream:
+              schema:
+                type: object
+                properties: {}
+                required: []
+        "404":
+          $ref: "#/components/responses/NotFound"
+openapi: 3.1.0
+components:
+  schemas:
+    Object:
+      type: object
+      properties:
+        key:
+          type: string
+        size:
+          type: integer
+        last_modified:
+          type: string
+      required:
+        - key
+        - size
+        - last_modified
+      description: A S3 Object
+    Bucket:
+      type: object
+      properties:
+        name:
+          type: string
+        created_at:
+          type: string
+      required:
+        - name
+        - created_at
+      description: A S3 Bucket
+  responses:
+    Conflict:
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+            properties:
+              message:
+                type: string
+                examples:
+                  - Lorem ipsum
+      description: The request could not be completed due to a conflict with the
+        current state of the resource. Resolve the conflict and try again.
+    NotFound:
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+            properties:
+              message:
+                type: string
+                examples:
+                  - Lorem ipsum
+      description: The server cannot find the requested resource. The endpoint may be
+        invalid or the resource may no longer exist.
+    BadRequest:
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+            properties:
+              message:
+                type: string
+                examples:
+                  - Lorem ipsum
+      description: The server could not understand the request due to invalid syntax.
+        The client should modify the request and try again.
+    InternalServerErrror:
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - message
+            properties:
+              message:
+                type: string
+                examples:
+                  - Lorem ipsum
+      description: The server encountered an unexpected condition that prevented it
+        from fulfilling the request. Report the issue to the support team if it
+        persists.
+    No Content:
+      description: The request was successful, but there is no content to return in
+        the response.
+      content:
+        application/json:
+          schema:
+            type: "null"
+    Created:
+      description: The request was successful, and a new resource was created.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+            required:
+              - data
+    Not Found:
+      description: The server cannot find the requested resource. The endpoint may be
+        invalid or the resource may no longer exist.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+            required:
+              - message
+    Ok:
+      description: The request was successful, and the server has returned the
+        requested resource in the response body.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+            required:
+              - data
+  parameters:
+    bucket_name:
+      name: bucket_name
+      in: path
+      required: true
+      schema:
+        type: string
+    object_key:
+      name: object_key
+      in: path
+      required: true
+      schema:
+        type: string
+servers:
+  - url: http://127.0.0.1:8080
+    description: ""
