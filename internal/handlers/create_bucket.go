@@ -1,19 +1,16 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-
-	"github.com/minio/minio-go/v7"
 
 	"github.com/hossein1376/s3manager/internal/handlers/serde"
 )
 
 func (h *Handler) CreateBucketHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var bucket minio.BucketInfo
-	err := json.NewDecoder(r.Body).Decode(&bucket)
+	var req CreateBucketRequest
+	err := serde.ReadJson(r, &req)
 	if err != nil {
 		resp := serde.Response{
 			Message: fmt.Sprintf("decoding body JSON: %s", err),
@@ -21,8 +18,7 @@ func (h *Handler) CreateBucketHandler(w http.ResponseWriter, r *http.Request) {
 		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
 		return
 	}
-	name := bucket.Name
-	if len(name) < 3 {
+	if len(req.Name) < 3 {
 		resp := serde.Response{
 			Message: "Bucket name cannot be shorter than 3 characters",
 		}
@@ -30,11 +26,15 @@ func (h *Handler) CreateBucketHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.s3.MakeBucket(ctx, bucket.Name, minio.MakeBucketOptions{})
+	err = h.service.CreateBucket(ctx, req.Name)
 	if err != nil {
-		serde.ExtractAndWrite(ctx, w, fmt.Errorf("making bucket: %w", err))
+		serde.ExtractAndWrite(ctx, w, err)
 		return
 	}
 
 	serde.WriteJson(ctx, w, http.StatusNoContent, nil)
+}
+
+type CreateBucketRequest struct {
+	Name string `json:"name"`
 }

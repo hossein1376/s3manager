@@ -1,63 +1,47 @@
 package handlers
 
 import (
-	"fmt"
-	"html/template"
 	"net/http"
-	"strings"
-
-	"github.com/minio/minio-go/v7"
+	"strconv"
 
 	"github.com/hossein1376/s3manager/internal/handlers/serde"
+	"github.com/hossein1376/s3manager/internal/model"
 )
-
-type listBucketsData struct {
-	Buckets     []minio.BucketInfo
-	Filter      string
-	Fold        bool
-	AllowDelete bool
-}
 
 func (h *Handler) ListBucketsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	query := r.URL.Query()
 	filter := query.Get("filter")
+	token := query.Get("token")
+	countStr := query.Get("count")
 
-	buckets, err := h.s3.ListBuckets(ctx)
+	var count int64 = 50
+	if countStr != "" {
+		var err error
+		count, err = strconv.ParseInt(countStr, 10, 32)
+		if err != nil {
+			serde.ExtractAndWrite(ctx, w, err) //TODO
+			return
+		}
+	}
+	opts := model.ListBucketsOptions{}
+	if filter != "" {
+		opts.Filter = &filter
+	}
+	if token != "" {
+		opts.ContinuationToken = &token
+	}
+
+	buckets, next, err := h.service.ListBuckets(ctx, int32(count), opts)
 	if err != nil {
 		serde.ExtractAndWrite(ctx, w, err)
 		return
 	}
-	if filter != "" {
-		var filtered []minio.BucketInfo
-		for _, bucket := range buckets {
-			if strings.HasPrefix(bucket.Name, filter) {
-				filtered = append(filtered, bucket)
-			}
-		}
-		buckets = filtered
-	}
+	resp := ListBucketsResponse{Buckets: buckets, NextToken: next}
+	serde.WriteJson(ctx, w, http.StatusOK, resp)
+}
 
-	t, err := template.ParseFS(
-		h.templates, "layout.html.tmpl", "buckets.html.tmpl",
-	)
-	if err != nil {
-		serde.InternalErrWrite(
-			ctx, w, fmt.Errorf("parsing template files: %w", err),
-		)
-		return
-	}
-
-	data := listBucketsData{
-		Buckets:     buckets,
-		AllowDelete: !h.cfg.S3.DisableDelete,
-		Filter:      filter,
-	}
-	err = t.ExecuteTemplate(w, "layout", data)
-	if err != nil {
-		serde.InternalErrWrite(
-			ctx, w, fmt.Errorf("executing template: %w", err),
-		)
-		return
-	}
+type ListBucketsResponse struct {
+	Buckets   []model.Bucket `json:"buckets"`
+	NextToken *string        `json:"next_token,omitempty"`
 }

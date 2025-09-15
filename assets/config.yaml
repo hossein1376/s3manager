@@ -1,8 +1,8 @@
 s3:
-  endpoint: 127.0.0.1:9000
+  endpoint: http://127.0.0.1:9000
   access_key: minio
   secret_access_key: minio123
-  region: ""
+  region: "auto"
   signature_type: v4
   disable_delete: false
   disable_force_download: false

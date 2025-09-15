@@ -5,16 +5,13 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/minio/minio-go/v7"
-
 	"github.com/hossein1376/s3manager/internal/handlers/serde"
 )
 
 func (h *Handler) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	bucketName := chi.URLParam(r, BucketName)
-	objectName := chi.URLParam(r, ObjectName)
+	bucketName := r.PathValue("bucket")
+	objectName := r.PathValue("object")
 	if bucketName == "" || objectName == "" {
 		resp := serde.Response{
 			Message: "bucket name and object name must be specified",
@@ -23,21 +20,19 @@ func (h *Handler) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	object, err := h.s3.GetObject(
-		ctx, bucketName, objectName, minio.GetObjectOptions{},
-	)
+	object, err := h.service.GetObject(ctx, bucketName, objectName)
 	if err != nil {
 		serde.ExtractAndWrite(ctx, w, fmt.Errorf("getting object: %w", err))
 		return
 	}
+	defer object.Close()
 
-	if !h.cfg.S3.DisableForceDownload {
-		w.Header().Set(
-			"Content-Disposition",
-			fmt.Sprintf("attachment; filename=\"%s\"", objectName),
-		)
-		w.Header().Set("Content-Type", "application/octet-stream")
-	}
+	w.Header().Set(
+		"Content-Disposition",
+		fmt.Sprintf("attachment; filename=\"%s\"", objectName),
+	)
+	w.Header().Set("Content-Type", "application/octet-stream")
+
 	_, err = io.Copy(w, object)
 	if err != nil {
 		serde.ExtractAndWrite(

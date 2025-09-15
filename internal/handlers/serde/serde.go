@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"syscall"
 
-	"github.com/minio/minio-go/v7"
+	"github.com/hossein1376/s3manager/pkg/errs"
+	"github.com/hossein1376/s3manager/pkg/reqid"
+	"github.com/hossein1376/s3manager/pkg/slogger"
 )
 
 type Response struct {
@@ -28,12 +30,18 @@ func ExtractAndWrite(ctx context.Context, w http.ResponseWriter, err error) {
 		return
 	}
 
-	var e minio.ErrorResponse
+	var e errs.Error
 	if errors.As(err, &e) {
-		resp := RemoteResponse{
-			Server: e.Server, StatusCode: e.StatusCode, Message: e.Message,
-		}
-		WriteJson(ctx, w, http.StatusBadGateway, resp)
+		status := e.HTTPStatusCode()
+		msg := e.Message()
+		slogger.Debug(
+			ctx,
+			"Error response",
+			slogger.Err("error", e.Unwrap()),
+			slog.Int("status_code", status),
+			slog.String("message", msg),
+		)
+		WriteJson(ctx, w, status, Response{Message: msg})
 		return
 	}
 
@@ -56,10 +64,10 @@ func ExtractAndWrite(ctx context.Context, w http.ResponseWriter, err error) {
 
 func InternalErrWrite(ctx context.Context, w http.ResponseWriter, err error) {
 	slog.ErrorContext(ctx, "Internal error", slog.Any("error", err))
-	WriteJson(
-		ctx,
-		w,
-		http.StatusInternalServerError,
-		http.StatusText(http.StatusInternalServerError),
-	)
+	resp := Response{Message: http.StatusText(http.StatusInternalServerError)}
+	id, ok := reqid.RequestID(ctx)
+	if ok {
+		resp.Message = id
+	}
+	WriteJson(ctx, w, http.StatusInternalServerError, resp)
 }
