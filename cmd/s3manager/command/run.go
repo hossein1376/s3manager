@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/url"
 	"os"
 	"os/signal"
@@ -14,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/hossein1376/s3manager/internal/services"
 	"github.com/hossein1376/s3manager/pkg/slogger"
-	"github.com/minio/minio-go/v7"
 
 	"github.com/hossein1376/s3manager/internal/config"
 	"github.com/hossein1376/s3manager/internal/handlers"
@@ -35,25 +35,29 @@ func Run() error {
 	logger := slogger.NewJSONLogger(slog.LevelDebug, os.Stdout)
 	slog.SetDefault(logger)
 
+	endpointURL, err := url.Parse(cfg.S3.Endpoint)
+	if err != nil {
+		return fmt.Errorf("parse s3 endpoint: %w", err)
+	}
+	addr, err := net.LookupIP(endpointURL.Hostname())
+	switch {
+	case err != nil:
+		return fmt.Errorf("lookup ip: %w", err)
+	case len(addr) == 0:
+		return fmt.Errorf("hostname didn't resolve to an IP address")
+	}
+	endpointURL.Host = fmt.Sprintf("%s:%s", addr[0], endpointURL.Port())
+
 	s3Client := s3.NewFromConfig(aws.Config{
-		BaseEndpoint: aws.String(cfg.S3.Endpoint),
+		BaseEndpoint: aws.String(endpointURL.String()),
 		Region:       cfg.S3.Region,
 		Credentials: credentials.NewStaticCredentialsProvider(
 			cfg.S3.AccessKeyID, cfg.S3.SecretAccessKey, "",
 		),
+		HTTPClient: nil,
 	})
 
-	endpoint, err := url.Parse(cfg.S3.Endpoint)
-	if err != nil {
-		return fmt.Errorf("parse s3 endpoint: %w", err)
-	}
-
-	minioClient, err := minio.New(endpoint.Host, cfg.MinioOpts())
-	if err != nil {
-		return fmt.Errorf("creating minio client: %w", err)
-	}
-
-	srvc := services.New(s3Client, minioClient)
+	srvc := services.New(s3Client)
 	server := handlers.NewServer(cfg, srvc)
 
 	errCh := make(chan error)

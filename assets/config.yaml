@@ -1,5 +1,5 @@
 s3:
-  endpoint: http://127.0.0.1:9000
+  endpoint: http://s3-host:9000
   access_key: minio
   secret_access_key: minio123
   region: "auto"

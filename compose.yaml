@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: .
+      network: host
+    image: hossein1376/s3manager:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./assets/config.yaml:/app/assets/config.yaml
+    extra_hosts:
+      - "s3-host:host-gateway"
