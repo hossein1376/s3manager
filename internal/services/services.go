@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,6 +13,11 @@ import (
 	"github.com/hossein1376/s3manager/internal/model"
 	"github.com/hossein1376/s3manager/pkg/errs"
 	"github.com/minio/minio-go/v7"
+)
+
+var (
+	ErrBucketNotEmpty = errors.New("bucket is not empty")
+	ErrExistingBucket = errors.New("bucket already exists")
 )
 
 type Services struct {
@@ -80,6 +86,14 @@ func (s *Services) CreateBucket(ctx context.Context, name string) error {
 		Bucket: aws.String(name),
 	}
 	_, err := s.s3Client.CreateBucket(ctx, params)
+	switch {
+	case err == nil:
+		return nil
+	case strings.Contains(err.Error(), "BucketAlreadyOwnedByYou"):
+		return errs.Conflict(errs.WithMsg(ErrExistingBucket.Error()))
+	default:
+		return err
+	}
 	return err
 }
 
@@ -88,7 +102,14 @@ func (s *Services) DeleteBucket(ctx context.Context, name string) error {
 		Bucket: aws.String(name),
 	}
 	_, err := s.s3Client.DeleteBucket(ctx, params)
-	return err
+	switch {
+	case err == nil:
+		return nil
+	case strings.Contains(err.Error(), "BucketNotEmpty"):
+		return errs.Conflict(errs.WithMsg(ErrBucketNotEmpty.Error()))
+	default:
+		return err
+	}
 }
 
 func (s *Services) PutObject(
