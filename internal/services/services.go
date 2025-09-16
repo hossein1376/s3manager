@@ -12,7 +12,6 @@ import (
 	"github.com/aws/smithy-go"
 	"github.com/hossein1376/s3manager/internal/model"
 	"github.com/hossein1376/s3manager/pkg/errs"
-	"github.com/minio/minio-go/v7"
 )
 
 var (
@@ -21,15 +20,11 @@ var (
 )
 
 type Services struct {
-	s3Client    *s3.Client
-	minioClient *minio.Client
+	s3Client *s3.Client
 }
 
-func New(s3Client *s3.Client, minioClient *minio.Client) *Services {
-	return &Services{
-		s3Client:    s3Client,
-		minioClient: minioClient,
-	}
+func New(s3Client *s3.Client) *Services {
+	return &Services{s3Client: s3Client}
 }
 
 func (s *Services) ListObjects(

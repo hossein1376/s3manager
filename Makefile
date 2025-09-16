@@ -1,6 +1,6 @@
 .PHONY: build
 build:
-	go build -o bin/s3manager
+	go build -o s3manager ./cmd/s3manager
 
 .PHONY: run
 run:
