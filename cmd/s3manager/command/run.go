@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/hossein1376/s3manager/internal/services"
+	"github.com/hossein1376/s3manager/pkg/slogger"
 	"github.com/minio/minio-go/v7"
 
 	"github.com/hossein1376/s3manager/internal/config"
@@ -30,6 +31,9 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("new config: %w", err)
 	}
+
+	logger := slogger.NewJSONLogger(slog.LevelDebug, os.Stdout)
+	slog.SetDefault(logger)
 
 	s3Client := s3.NewFromConfig(aws.Config{
 		BaseEndpoint: aws.String(cfg.S3.Endpoint),
