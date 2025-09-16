@@ -1,15 +1,12 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/hossein1376/s3manager/internal/config"
 	"github.com/hossein1376/s3manager/internal/services"
-)
-
-const (
-	BucketName = "bucketName"
-	ObjectName = "objectName"
+	"github.com/hossein1376/s3manager/ui"
 )
 
 type Handler struct {
@@ -18,23 +15,27 @@ type Handler struct {
 }
 
 func NewServer(
-	cfg *config.Config, srvc *services.Services) *http.Server {
+	cfg *config.Config, srvc *services.Services,
+) (*http.Server, error) {
 	h := &Handler{cfg: cfg, service: srvc}
+
+	uiFS, err := ui.FileSystem()
+	if err != nil {
+		return nil, fmt.Errorf("loading ui filesystem: %w", err)
+	}
 
 	return &http.Server{
 		Addr:         cfg.Server.Address,
-		Handler:      newRouter(h),
+		Handler:      newRouter(h, http.FS(uiFS)),
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
-	}
+	}, nil
 }
 
-func newRouter(h *Handler) *http.ServeMux {
+func newRouter(h *Handler, ui http.FileSystem) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.Handle(
-		"GET /", http.FileServer(http.Dir("./ui")),
-	)
+	mux.Handle("GET /", http.FileServer(ui))
 	mux.Handle("GET /api/buckets", withDefaults(h.ListBucketsHandler))
 	mux.Handle("GET /api/buckets/{bucket}", withDefaults(h.ListObjectsHandler))
 	mux.Handle("POST /api/buckets", withDefaults(h.CreateBucketHandler))

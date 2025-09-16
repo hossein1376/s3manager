@@ -58,7 +58,10 @@ func Run() error {
 	})
 
 	srvc := services.New(s3Client)
-	server := handlers.NewServer(cfg, srvc)
+	server, err := handlers.NewServer(cfg, srvc)
+	if err != nil {
+		return fmt.Errorf("new server: %w", err)
+	}
 
 	errCh := make(chan error)
 	signalCh := make(chan os.Signal, 1)

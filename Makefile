@@ -4,7 +4,7 @@ build:
 
 .PHONY: run
 run:
-	go run
+	go run ./cmd/s3manager
 
 .PHONY: lint
 lint:
