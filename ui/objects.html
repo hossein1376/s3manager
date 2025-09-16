@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Objects - S3 Manager</title>
+  <link rel="stylesheet" href="css/pico.min.css">
+  <link rel="stylesheet" href="css/pico.colors.min.css">
+</head>
+<body>
+  <main class="container">
+    <a href="index.html">← Buckets</a>
+    <h1>Objects in <span id="bucket-title"></span></h1>
+
+    <form id="upload-form" class="grid">
+      <input type="file" id="file-input" required>
+      <input type="text" id="object-key" placeholder="Object key" required>
+      <button class="pico-background-jade-600" type="submit">⬆ Upload</button>
+    </form>
+
+    <form id="object-filter-form" class="grid">
+      <input type="text" id="object-filter" placeholder="Search objects...">
+      <button type="submit">🔍 Search</button>
+    </form>
+
+    <table id="objects-table">
+      <thead>
+        <tr><th>Key</th><th>Size</th><th>Last Modified</th><th>Actions</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button id="load-more-objects" style="display:none">Load More</button>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script> loadObjects(); </script>
+</body>
+</html>
