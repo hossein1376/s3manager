@@ -33,19 +33,35 @@ func newRouter(h *Handler) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.Handle(
-		"GET /", http.RedirectHandler("/buckets", http.StatusPermanentRedirect),
+		"GET /", http.FileServer(http.Dir("./ui")),
 	)
-	mux.HandleFunc("GET /buckets", h.ListBucketsHandler)
-	mux.HandleFunc("GET /buckets/{bucket}", h.ListObjectsHandler)
-	mux.HandleFunc("POST /buckets", h.CreateBucketHandler)
-	mux.HandleFunc("DELETE /buckets/{bucket}", h.DeleteBucketHandler)
-	mux.HandleFunc("PUT /buckets/{bucket}/objects", h.PutObjectHandler)
-	mux.HandleFunc(
-		"GET /buckets/{bucket}/objects/{object}", h.GetObjectHandler,
+	mux.Handle("GET /api/buckets", withDefaults(h.ListBucketsHandler))
+	mux.Handle("GET /api/buckets/{bucket}", withDefaults(h.ListObjectsHandler))
+	mux.Handle("POST /api/buckets", withDefaults(h.CreateBucketHandler))
+	mux.Handle(
+		"DELETE /api/buckets/{bucket}", withDefaults(h.DeleteBucketHandler),
 	)
-	mux.HandleFunc(
-		"DELETE /buckets/{bucket}/objects/{object}", h.DeleteObjectHandle,
+	mux.Handle(
+		"PUT /api/buckets/{bucket}/objects", withDefaults(h.PutObjectHandler),
+	)
+	mux.Handle(
+		"GET /api/buckets/{bucket}/objects/{object}",
+		withDefaults(h.GetObjectHandler),
+	)
+	mux.Handle(
+		"DELETE /api/buckets/{bucket}/objects/{object}",
+		withDefaults(h.DeleteObjectHandle),
 	)
 
 	return mux
+}
+
+func withDefaults(handler http.HandlerFunc) http.Handler {
+	return withMiddlewares(
+		handler,
+		requestIDMiddleware,
+		loggerMiddleware,
+		recoverMiddleware,
+		corsMiddleware,
+	)
 }
