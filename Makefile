@@ -9,3 +9,7 @@ run:
 .PHONY: lint
 lint:
 	golangci-lint run
+
+.PHONY: clean-build
+clean-build:
+	rm -rf ./dist/*
