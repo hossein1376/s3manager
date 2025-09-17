@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/hossein1376/s3manager/internal/handlers/serde"
 )
 
@@ -46,8 +47,15 @@ func (h *Handler) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 			slog.ErrorContext(ctx, "closing file", slog.Any("error", err))
 		}
 	}()
+	mimeType, err := mimetype.DetectReader(file)
+	if err != nil {
+		serde.InternalErrWrite(ctx, w, fmt.Errorf("detecting mimetype: %w", err))
+		return
+	}
 
-	obj, err := h.service.PutObject(ctx, bucketName, objectKey, file)
+	obj, err := h.service.PutObject(
+		ctx, bucketName, objectKey, mimeType.String(), file,
+	)
 	if err != nil {
 		serde.ExtractAndWrite(ctx, w, fmt.Errorf("putting object: %w", err))
 		return

@@ -108,12 +108,13 @@ func (s *Services) DeleteBucket(ctx context.Context, name string) error {
 }
 
 func (s *Services) PutObject(
-	ctx context.Context, bucketName, objectKey string, r io.Reader,
+	ctx context.Context, bucketName, objectKey, mimeType string, r io.Reader,
 ) (*model.Object, error) {
 	params := &s3.PutObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(objectKey),
-		Body:   r,
+		Bucket:      aws.String(bucketName),
+		Key:         aws.String(objectKey),
+		ContentType: aws.String(mimeType),
+		Body:        r,
 	}
 	output, err := s.s3Client.PutObject(ctx, params)
 	if err != nil {
@@ -140,7 +141,7 @@ func (s *Services) DeleteObject(
 
 func (s *Services) GetObject(
 	ctx context.Context, bucketName, objectKey string,
-) (io.ReadCloser, error) {
+) (io.ReadCloser, *string, error) {
 	params := &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(objectKey),
@@ -149,9 +150,9 @@ func (s *Services) GetObject(
 	if err != nil {
 		var opErr *smithy.OperationError
 		if errors.As(err, &opErr) {
-			return nil, errs.NotFound(errs.WithErr(opErr.Unwrap()))
+			return nil, nil, errs.NotFound(errs.WithErr(opErr.Unwrap()))
 		}
-		return nil, err
+		return nil, nil, err
 	}
-	return out.Body, nil
+	return out.Body, out.ContentType, nil
 }

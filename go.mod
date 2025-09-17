@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.12
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.1
 	github.com/aws/smithy-go v1.23.0
+	github.com/gabriel-vasile/mimetype v1.4.10
 	github.com/goccy/go-yaml v1.18.0
 	github.com/oklog/ulid/v2 v2.1.1
 )

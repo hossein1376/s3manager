@@ -20,24 +20,30 @@ func (h *Handler) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	object, err := h.service.GetObject(ctx, bucketName, objectName)
+	object, ct, err := h.service.GetObject(ctx, bucketName, objectName)
 	if err != nil {
 		serde.ExtractAndWrite(ctx, w, fmt.Errorf("getting object: %w", err))
 		return
 	}
 	defer object.Close()
+	var contentType string
+	if ct != nil {
+		contentType = *ct
+	} else {
+		contentType = "application/octet-stream"
+	}
 
 	w.Header().Set(
 		"Content-Disposition",
 		fmt.Sprintf("attachment; filename=\"%s\"", objectName),
 	)
-	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Type", contentType)
 
 	_, err = io.Copy(w, object)
 	if err != nil {
-		serde.ExtractAndWrite(
-			ctx, w, fmt.Errorf("copying object to response writer: %w", err),
-		)
+		serde.InternalErrWrite(ctx, w, fmt.Errorf("copying object: %w", err))
 		return
 	}
+
+	serde.WriteJson(ctx, w, http.StatusOK, nil)
 }
