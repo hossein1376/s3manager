@@ -5,8 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"net"
-	"net/url"
 	"os"
 	"os/signal"
 
@@ -32,24 +30,15 @@ func Run() error {
 		return fmt.Errorf("new config: %w", err)
 	}
 
-	logger := slogger.NewJSONLogger(slog.LevelDebug, os.Stdout)
+	logger := slogger.NewJSONLogger(cfg.Logger.Level, os.Stdout)
 	slog.SetDefault(logger)
 
-	endpointURL, err := url.Parse(cfg.S3.Endpoint)
-	if err != nil {
-		return fmt.Errorf("parse s3 endpoint: %w", err)
+	if cfg.IsDefault {
+		slog.Warn("using default configs, use -c flag to specify configuration file")
 	}
-	addr, err := net.LookupIP(endpointURL.Hostname())
-	switch {
-	case err != nil:
-		return fmt.Errorf("lookup ip: %w", err)
-	case len(addr) == 0:
-		return fmt.Errorf("hostname didn't resolve to an IP address")
-	}
-	endpointURL.Host = fmt.Sprintf("%s:%s", addr[0], endpointURL.Port())
 
 	s3Client := s3.NewFromConfig(aws.Config{
-		BaseEndpoint: aws.String(endpointURL.String()),
+		BaseEndpoint: aws.String(cfg.S3.Endpoint),
 		Region:       cfg.S3.Region,
 		Credentials: credentials.NewStaticCredentialsProvider(
 			cfg.S3.AccessKeyID, cfg.S3.SecretAccessKey, "",

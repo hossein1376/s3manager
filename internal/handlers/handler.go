@@ -10,12 +10,12 @@ import (
 )
 
 type Handler struct {
-	cfg     *config.Config
+	cfg     config.Config
 	service *services.Services
 }
 
 func NewServer(
-	cfg *config.Config, srvc *services.Services,
+	cfg config.Config, srvc *services.Services,
 ) (*http.Server, error) {
 	h := &Handler{cfg: cfg, service: srvc}
 
@@ -26,19 +26,21 @@ func NewServer(
 
 	return &http.Server{
 		Addr:         cfg.Server.Address,
-		Handler:      newRouter(h, http.FS(uiFS)),
+		Handler:      newRouter(h, http.FS(uiFS), cfg.Server.DisableUI),
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 	}, nil
 }
 
-func newRouter(h *Handler, ui http.FileSystem) *http.ServeMux {
+func newRouter(h *Handler, ui http.FileSystem, disableUI bool) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.Handle("GET /", http.FileServer(ui))
+	if !disableUI {
+		mux.Handle("GET /", http.FileServer(ui))
+	}
 	mux.Handle("GET /api/buckets", withDefaults(h.ListBucketsHandler))
-	mux.Handle("GET /api/buckets/{bucket}", withDefaults(h.ListObjectsHandler))
 	mux.Handle("POST /api/buckets", withDefaults(h.CreateBucketHandler))
+	mux.Handle("GET /api/buckets/{bucket}", withDefaults(h.ListObjectsHandler))
 	mux.Handle(
 		"DELETE /api/buckets/{bucket}", withDefaults(h.DeleteBucketHandler),
 	)
