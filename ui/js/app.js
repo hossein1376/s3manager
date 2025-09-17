@@ -1,4 +1,4 @@
-const API_BASE = "http://127.0.0.1:8080/api";
+const API_BASE = `${window.location.origin}/api`;
 
 let bucketNextToken = null;
 let bucketFilter = "";
@@ -17,6 +17,10 @@ async function loadBuckets(reset = true) {
   if (bucketNextToken) url.searchParams.set("token", bucketNextToken);
 
   const res = await fetch(url);
+  if (!res.ok) {
+    showToast("Error loading buckets: " + await res.text());
+    return
+  }
   const data = await res.json();
 
   const tbody = document.querySelector("#buckets-table tbody");
@@ -38,11 +42,15 @@ async function loadBuckets(reset = true) {
   document.querySelector("#create-bucket-form").onsubmit = async e => {
     e.preventDefault();
     const name = document.querySelector("#bucket-name").value;
-    await fetch(`${API_BASE}/buckets`, {
+    const res = await fetch(`${API_BASE}/buckets`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({name})
     });
+    if (!res.ok) {
+      showToast("Error creating bucket: " + await res.text());
+      return
+    }
     document.querySelector("#bucket-name").value = "";
     loadBuckets(true);
   };
@@ -57,7 +65,11 @@ async function loadBuckets(reset = true) {
 }
 
 async function deleteBucket(name) {
-  await fetch(`${API_BASE}/buckets/${name}`, {method: "DELETE"});
+  const res = await fetch(`${API_BASE}/buckets/${name}`, {method: "DELETE"});
+  if (!res.ok) {
+    showToast("Error deleting bucket: " + await res.text());
+    return
+  }
   loadBuckets(true);
 }
 
@@ -81,6 +93,10 @@ async function loadObjects(reset = true) {
   if (objectNextToken) url.searchParams.set("token", objectNextToken);
 
   const res = await fetch(url);
+  if (!res.ok) {
+    showToast("Error loading objects: " + await res.text());
+    return
+  }
   const data = await res.json();
 
   const tbody = document.querySelector("#objects-table tbody");
@@ -107,10 +123,14 @@ async function loadObjects(reset = true) {
     const formData = new FormData();
     formData.append("key", key);
     formData.append("file", fileInput.files[0]);
-    await fetch(`${API_BASE}/buckets/${bucket}/objects`, {
+    const res = await fetch(`${API_BASE}/buckets/${bucket}/objects`, {
       method: "PUT",
       body: formData
     });
+    if (!res.ok) {
+      showToast("Error putting object: " + await res.text());
+      return
+    }
     fileInput.value = "";
     document.querySelector("#object-key").value = "";
     loadObjects(true);
@@ -126,10 +146,23 @@ async function loadObjects(reset = true) {
 }
 
 async function deleteObject(bucket, key) {
-  await fetch(`${API_BASE}/buckets/${bucket}/objects/${encodeURIComponent(key)}`, {method: "DELETE"});
+  const res = await fetch(`${API_BASE}/buckets/${bucket}/objects/${encodeURIComponent(key)}`, {method: "DELETE"});
+  if (!res.ok) {
+    showToast("Failed to delete object: " + await res.text());
+    return;
+  }
   loadObjects(true);
 }
 
 async function downloadObject(bucket, key) {
   window.open(`${API_BASE}/buckets/${bucket}/objects/${encodeURIComponent(key)}`, "_blank");
+}
+
+function showToast(message, timeout = 3000) {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.classList.add("show");
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, timeout);
 }

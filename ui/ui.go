@@ -5,8 +5,7 @@ import (
 	"io/fs"
 )
 
-//go:embed index.html
-//go:embed objects.html
+//go:embed *.html
 //go:embed js/*.js
 //go:embed css/*.css
 var files embed.FS
