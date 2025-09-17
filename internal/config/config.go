@@ -42,6 +42,7 @@ func defaults() Config {
 			AccessKeyID:     accessKey,
 			SecretAccessKey: secretKey,
 			Region:          "auto",
+			MaxSizeBytes:    100 * 1024 * 1024 * 1024, // 100mb
 		},
 		Server: Server{
 			Address:      "0.0.0.0:8080",
@@ -68,6 +69,7 @@ type S3 struct {
 	AccessKeyID     string `yaml:"access-key"`
 	SecretAccessKey string `yaml:"secret-access-key"`
 	Region          string `yaml:"region"`
+	MaxSizeBytes    int64  `yaml:"max-size-bytes"`
 }
 
 type Server struct {

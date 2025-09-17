@@ -27,7 +27,7 @@ func (h *Handler) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := r.ParseMultipartForm(32 * 1024 * 1024) // TODO
+	err := r.ParseMultipartForm(h.cfg.S3.MaxSizeBytes)
 	if err != nil {
 		serde.InternalErrWrite(
 			ctx, w, fmt.Errorf("parsing multipart form: %w", err),
