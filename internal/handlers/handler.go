@@ -36,7 +36,7 @@ func newRouter(h *Handler, ui http.FileSystem, disableUI bool) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	if !disableUI {
-		mux.Handle("GET /", http.FileServer(ui))
+		mux.Handle("GET /", withDefaults(toHandlerFunc(http.FileServer(ui))))
 	}
 	mux.Handle("GET /api/buckets", withDefaults(h.ListBucketsHandler))
 	mux.Handle("POST /api/buckets", withDefaults(h.CreateBucketHandler))
@@ -67,4 +67,10 @@ func withDefaults(handler http.HandlerFunc) http.Handler {
 		recoverMiddleware,
 		corsMiddleware,
 	)
+}
+
+func toHandlerFunc(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		h.ServeHTTP(w, r)
+	}
 }

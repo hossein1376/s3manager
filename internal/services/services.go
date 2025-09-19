@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
+
 	"github.com/hossein1376/s3manager/internal/model"
 	"github.com/hossein1376/s3manager/pkg/errs"
 )
@@ -17,6 +18,7 @@ import (
 var (
 	ErrBucketNotEmpty = errors.New("bucket is not empty")
 	ErrExistingBucket = errors.New("bucket already exists")
+	ErrMissingBucket  = errors.New("bucket not found")
 )
 
 type Services struct {
@@ -41,6 +43,9 @@ func (s *Services) ListObjects(
 	}
 	list, err := s.s3Client.ListObjectsV2(ctx, params)
 	if err != nil {
+		if strings.Contains(err.Error(), "NoSuchBucket") {
+			return nil, nil, errs.NotFound(errs.WithErr(ErrMissingBucket))
+		}
 		return nil, nil, err
 	}
 	objects := make([]model.Object, *list.KeyCount)
@@ -85,11 +90,10 @@ func (s *Services) CreateBucket(ctx context.Context, name string) error {
 	case err == nil:
 		return nil
 	case strings.Contains(err.Error(), "BucketAlreadyOwnedByYou"):
-		return errs.Conflict(errs.WithMsg(ErrExistingBucket.Error()))
+		return errs.Conflict(errs.WithErr(ErrExistingBucket))
 	default:
 		return err
 	}
-	return err
 }
 
 func (s *Services) DeleteBucket(ctx context.Context, name string) error {
@@ -101,7 +105,7 @@ func (s *Services) DeleteBucket(ctx context.Context, name string) error {
 	case err == nil:
 		return nil
 	case strings.Contains(err.Error(), "BucketNotEmpty"):
-		return errs.Conflict(errs.WithMsg(ErrBucketNotEmpty.Error()))
+		return errs.Conflict(errs.WithErr(ErrBucketNotEmpty))
 	default:
 		return err
 	}
@@ -118,7 +122,12 @@ func (s *Services) PutObject(
 	}
 	output, err := s.s3Client.PutObject(ctx, params)
 	if err != nil {
-		return nil, err
+		switch {
+		case strings.Contains(err.Error(), "NoSuchBucket"):
+			return nil, errs.NotFound(errs.WithErr(ErrMissingBucket))
+		default:
+			return nil, err
+		}
 	}
 
 	return &model.Object{
