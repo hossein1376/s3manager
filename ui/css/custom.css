@@ -1,8 +1,48 @@
+:root {
+    /* base font size */
+    --pico-font-size: 16px;
+
+    /*spacing scale */
+    --pico-spacing: 0.75rem;
+
+    /* buttons/inputs */
+    --pico-form-element-spacing-vertical: 1rem;
+    --pico-form-element-spacing-horizontal: 1rem;
+    --pico-form-element-height: 2rem;
+}
+
+table th, table td {
+    padding: 0.6rem 0.8rem;
+    font-size: 1.2rem;
+}
+
+button, input[type="text"], input[type="file"] {
+    font-size: 0.9rem;
+    padding: 0.6rem 0.9rem;
+}
+
+.page-size-control {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0.5rem 0;
+}
+
+.search-row {
+    display: grid;
+    grid-template-columns: 1fr .25fr 0.5fr;
+    gap: 1rem;
+}
+
+.search-row > div {
+    padding: 1rem;
+    background: #f1f3f7;
+    border-radius: 6px;
+}
+
 .toast {
     position: fixed;
     bottom: 1rem;
     right: 1rem;
-    background: #e63946;
     color: white;
     padding: 0.75rem 1.25rem;
     border-radius: 6px;
@@ -11,6 +51,13 @@
     transform: translateY(20px);
     transition: opacity 0.3s ease, transform 0.3s ease;
     z-index: 9999;
+}
+.toast.success {
+    background: #00A66E;
+}
+
+.toast.error {
+    background: #e63946;
 }
 .toast.show {
     opacity: 1;
