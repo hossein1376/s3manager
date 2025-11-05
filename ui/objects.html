@@ -1,72 +1,81 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Objects - S3 Manager</title>
-    <link rel="stylesheet" href="css/pico.min.css">
-    <link rel="stylesheet" href="css/pico.colors.min.css">
-    <link rel="stylesheet" href="css/custom.css">
-</head>
-<body>
-<main class="container">
-    <a href="index.html">← Buckets</a>
-    <h1>Objects in <span id="bucket-title"></span></h1>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Objects - S3 Manager</title>
+        <link rel="stylesheet" href="css/pico.min.css" />
+        <link rel="stylesheet" href="css/pico.colors.min.css" />
+        <link rel="stylesheet" href="css/custom.css" />
+    </head>
+    <body>
+        <main class="container">
+            <a href="index.html">← Buckets</a>
+            <h1>Objects in <span id="bucket-title"></span></h1>
 
-    <form id="upload-form" class="grid">
-        <input type="file" id="file-input" multiple>
-        <input type="file" id="folder-input" webkitdirectory multiple>
-        <button class="pico-background-jade-600" type="submit">⬆ Upload</button>
-    </form>
+            <form id="upload-form" class="grid">
+                <input type="file" id="file-input" multiple />
+                <input type="file" id="folder-input" webkitdirectory multiple />
+                <button class="pico-background-jade-600" type="submit">
+                    ⬆ Upload
+                </button>
+            </form>
 
-    <form id="object-filter-form" class="search-row">
-        <input type="search" id="object-filter"
-        placeholder="Search objects...">
-        <label>
-            <select id="object-page-size">
-                <option value="10">10</option>
-                <option value="20" selected>20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-                <option value="500">500</option>
-                <option value="1000">1000</option>
-            </select>
-        </label>
-        <button type="submit">🔍 Search</button>
-    </form>
+            <form id="object-filter-form" class="search-row">
+                <input
+                    type="search"
+                    id="object-filter"
+                    placeholder="Search objects..."
+                />
+                <label>
+                    <select id="object-page-size">
+                        <option value="10">10</option>
+                        <option value="20" selected>20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                    </select>
+                </label>
+                <button type="submit">🔍 Search</button>
+            </form>
 
-    <div class="page-size-control">
+            <div class="page-size-control"></div>
 
-    </div>
+            <a href="" id="root-button">← Root</a>
+            <div class="grid">
+                <button id="download-selected">⬇ Download Selected</button>
+                <button
+                    id="delete-selected"
+                    class="outline contrast pico-background-red-600"
+                >
+                    🗑 Delete Selected
+                </button>
+            </div>
 
-    <br/>
-    <div class="grid">
-        <button id="download-selected">⬇ Download Selected</button>
-        <button id="delete-selected"
-                class="outline contrast pico-background-red-600">
-            🗑 Delete Selected
-        </button>
-    </div>
+            <div class="overflow-auto">
+                <table id="objects-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all" /></th>
+                            <th>Key</th>
+                            <th>Size</th>
+                            <th>Last Modified</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
 
-    <div class="overflow-auto">
-        <table id="objects-table">
-            <thead>
-            <tr>
-                <th><input type="checkbox" id="select-all"></th>
-                <th>Key</th>
-                <th>Size</th>
-                <th>Last Modified</th>
-                <th>Actions</th>
-            </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
+            <button id="load-more-objects" style="display: none">
+                Load More
+            </button>
+        </main>
 
-    <button id="load-more-objects" style="display:none">Load More</button>
-</main>
-
-<script src="js/app.js"></script>
-<script> loadObjects(); </script>
-<div id="toast" class="toast"></div>
-</body>
+        <script src="js/app.js"></script>
+        <script>
+            loadObjects();
+        </script>
+        <div id="toast" class="toast"></div>
+    </body>
 </html>
