@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/hossein1376/s3manager/internal/handlers/serde"
 )
@@ -21,6 +22,13 @@ func (h *Handler) CreateBucketHandler(w http.ResponseWriter, r *http.Request) {
 	if len(req.Name) < 3 {
 		resp := serde.Response{
 			Message: "Bucket name cannot be shorter than 3 characters",
+		}
+		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
+		return
+	}
+	if strings.Contains(req.Name, "/") {
+		resp := serde.Response{
+			Message: "Bucket name cannot contain invalid characters",
 		}
 		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
 		return

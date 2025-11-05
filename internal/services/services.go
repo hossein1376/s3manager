@@ -19,6 +19,7 @@ var (
 	ErrBucketNotEmpty = errors.New("bucket is not empty")
 	ErrExistingBucket = errors.New("bucket already exists")
 	ErrMissingBucket  = errors.New("bucket not found")
+	ErrInvalidName    = errors.New("invalid bucket name")
 )
 
 type Services struct {
@@ -35,11 +36,16 @@ func (s *Services) ListObjects(
 	maxKeys int32,
 	opt model.ListObjectsOption,
 ) ([]model.Object, *string, error) {
+	prefix := opt.Filter
+	if opt.Path != "" {
+		prefix = prefix + opt.Path + "/"
+	}
 	params := &s3.ListObjectsV2Input{
 		Bucket:            aws.String(bucketName),
 		MaxKeys:           aws.Int32(maxKeys),
 		ContinuationToken: opt.ContinuationToken,
-		Prefix:            opt.Filter,
+		Prefix:            &prefix,
+		Delimiter:         aws.String("/"),
 	}
 	list, err := s.s3Client.ListObjectsV2(ctx, params)
 	if err != nil {
@@ -48,13 +54,23 @@ func (s *Services) ListObjects(
 		}
 		return nil, nil, err
 	}
-	objects := make([]model.Object, *list.KeyCount)
-	for i, obj := range list.Contents {
-		objects[i] = model.Object{
+	objects := make([]model.Object, 0, *list.KeyCount)
+	for _, obj := range list.CommonPrefixes {
+		objects = append(objects, model.Object{
+			Key:   aws.String(strings.TrimSuffix(*obj.Prefix, "/")),
+			IsDir: true,
+		})
+	}
+	for _, obj := range list.Contents {
+		var lastModified *string
+		if obj.LastModified != nil {
+			lastModified = aws.String(obj.LastModified.Format(time.DateTime))
+		}
+		objects = append(objects, model.Object{
 			Key:          obj.Key,
 			Size:         obj.Size,
-			LastModified: obj.LastModified,
-		}
+			LastModified: lastModified,
+		})
 	}
 	return objects, list.NextContinuationToken, nil
 }
@@ -73,9 +89,13 @@ func (s *Services) ListBuckets(
 	}
 	buckets := make([]model.Bucket, len(list.Buckets))
 	for i, bucket := range list.Buckets {
+		var createdAt *string
+		if bucket.CreationDate != nil {
+			createdAt = aws.String(bucket.CreationDate.Format(time.DateTime))
+		}
 		buckets[i] = model.Bucket{
 			Name:      bucket.Name,
-			CreatedAt: bucket.CreationDate,
+			CreatedAt: createdAt,
 		}
 	}
 	return buckets, list.ContinuationToken, nil
@@ -91,6 +111,8 @@ func (s *Services) CreateBucket(ctx context.Context, name string) error {
 		return nil
 	case strings.Contains(err.Error(), "BucketAlreadyOwnedByYou"):
 		return errs.Conflict(errs.WithErr(ErrExistingBucket))
+	case strings.Contains(err.Error(), "InvalidBucketName"):
+		return errs.BadRequest(errs.WithErr(ErrInvalidName))
 	default:
 		return err
 	}
@@ -133,7 +155,7 @@ func (s *Services) PutObject(
 	return &model.Object{
 		Key:          &objectKey,
 		Size:         output.Size,
-		LastModified: aws.Time(time.Now()),
+		LastModified: aws.String(time.Now().Format(time.DateTime)),
 	}, nil
 }
 

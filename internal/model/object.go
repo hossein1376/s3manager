@@ -1,14 +1,14 @@
 package model
 
-import "time"
-
 type Object struct {
-	Key          *string    `json:"key"`
-	Size         *int64     `json:"size"`
-	LastModified *time.Time `json:"last_modified"`
+	Key          *string `json:"key"`
+	IsDir        bool    `json:"is_dir"`
+	Size         *int64  `json:"size,omitempty"`
+	LastModified *string `json:"last_modified,omitempty"`
 }
 
 type ListObjectsOption struct {
-	Filter            *string
+	Path              string
+	Filter            string
 	ContinuationToken *string
 }

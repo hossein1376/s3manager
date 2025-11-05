@@ -21,6 +21,7 @@ func (h *Handler) ListObjectsHandler(w http.ResponseWriter, r *http.Request) {
 	filter := query.Get("filter")
 	token := query.Get("token")
 	countQuery := query.Get("count")
+	path := query.Get("path")
 
 	var count int64 = 50
 	if countQuery != "" {
@@ -34,12 +35,12 @@ func (h *Handler) ListObjectsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	opts := model.ListObjectsOption{}
+	opts := model.ListObjectsOption{
+		Path:   path,
+		Filter: filter,
+	}
 	if token != "" {
 		opts.ContinuationToken = &token
-	}
-	if filter != "" {
-		opts.Filter = &filter
 	}
 	list, next, err := h.service.ListObjects(ctx, bucketName, int32(count), opts)
 	if err != nil {
