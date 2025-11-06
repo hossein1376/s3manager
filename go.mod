@@ -9,6 +9,7 @@ require (
 	github.com/aws/smithy-go v1.23.0
 	github.com/gabriel-vasile/mimetype v1.4.10
 	github.com/goccy/go-yaml v1.18.0
+	github.com/hossein1376/grape v0.3.1-0.20251106224422-2661fbd65172
 	github.com/oklog/ulid/v2 v2.1.1
 )
 

@@ -1,38 +1,60 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
-	"strconv"
 
-	"github.com/hossein1376/s3manager/internal/handlers/serde"
+	"github.com/hossein1376/grape"
+	"github.com/hossein1376/grape/validator"
 	"github.com/hossein1376/s3manager/internal/model"
 )
 
 func (h *Handler) ListObjectsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bucketName := r.PathValue("bucket")
-	if bucketName == "" {
-		serde.WriteJson(
-			ctx, w, http.StatusBadRequest, serde.Response{Message: "missing bucket name"},
+	v := validator.New()
+	v.Check(
+		"bucket",
+		validator.Case{
+			Cond: validator.Empty(bucketName), Msg: "bucket name is required",
+		},
+		validator.Case{
+			Cond: validator.LengthMin(bucketName, 3),
+			Msg:  "Bucket name cannot be shorter than 3 characters",
+		},
+		validator.Case{
+			Cond: validator.Contains(bucketName, "/"),
+			Msg:  "Bucket name cannot contain invalid characters",
+		},
+	)
+	if ok := v.Validate(); !ok {
+		resp := grape.Response{Message: "Bad input", Data: v.Errors}
+		grape.WriteJson(
+			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
 		)
 		return
 	}
+
 	query := r.URL.Query()
 	filter := query.Get("filter")
 	token := query.Get("token")
-	countQuery := query.Get("count")
 	path := query.Get("path")
 
-	var count int64 = 50
-	if countQuery != "" {
-		var err error
-		count, err = strconv.ParseInt(countQuery, 10, 32)
-		if err != nil {
-			serde.WriteJson(
-				ctx, w, http.StatusBadRequest, serde.Response{Message: "bad count"},
-			)
-			return
+	count, err := grape.Query(query, "count", grape.ParseInt[int32]())
+	switch {
+	case err == nil:
+		// continue
+	case errors.Is(err, grape.ErrMissingQuery):
+		count = 50 // default value
+	default:
+		resp := grape.Response{
+			Message: "Bad input", Data: fmt.Sprintf("parse count: %s", err),
 		}
+		grape.WriteJson(
+			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
+		)
+		return
 	}
 
 	opts := model.ListObjectsOption{
@@ -44,14 +66,14 @@ func (h *Handler) ListObjectsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	list, next, err := h.service.ListObjects(ctx, bucketName, int32(count), opts)
 	if err != nil {
-		serde.ExtractAndWrite(ctx, w, err)
+		grape.RespondFromErr(ctx, w, err)
 		return
 	}
-	resp := ListObjectsResponse{List: list, NextToken: next}
-	serde.WriteJson(ctx, w, http.StatusOK, resp)
+	resp := listObjectsResponse{List: list, NextToken: next}
+	grape.WriteJson(ctx, w, grape.WithData(resp))
 }
 
-type ListObjectsResponse struct {
+type listObjectsResponse struct {
 	List      []model.Object `json:"list"`
 	NextToken *string        `json:"next_token,omitempty"`
 }

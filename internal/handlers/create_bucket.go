@@ -3,46 +3,54 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
-	"github.com/hossein1376/s3manager/internal/handlers/serde"
+	"github.com/hossein1376/grape"
+	"github.com/hossein1376/grape/validator"
 )
 
 func (h *Handler) CreateBucketHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var req CreateBucketRequest
-	err := serde.ReadJson(r, &req)
+	var req createBucketRequest
+	err := grape.ReadJson(w, r, &req)
 	if err != nil {
-		resp := serde.Response{
+		resp := grape.Response{
 			Message: fmt.Sprintf("decoding body JSON: %s", err),
 		}
-		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
+		grape.WriteJson(
+			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
+		)
 		return
 	}
-	if len(req.Name) < 3 {
-		resp := serde.Response{
-			Message: "Bucket name cannot be shorter than 3 characters",
-		}
-		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
-		return
-	}
-	if strings.Contains(req.Name, "/") {
-		resp := serde.Response{
-			Message: "Bucket name cannot contain invalid characters",
-		}
-		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
+
+	v := validator.New()
+	v.Check(
+		"name",
+		validator.Case{
+			Cond: validator.LengthMin(req.Name, 3),
+			Msg:  "Bucket name cannot be shorter than 3 characters",
+		},
+		validator.Case{
+			Cond: validator.Contains(req.Name, "/"),
+			Msg:  "Bucket name cannot contain invalid characters",
+		},
+	)
+	if ok := v.Validate(); !ok {
+		resp := grape.Response{Message: "Bad input", Data: v.Errors}
+		grape.WriteJson(
+			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
+		)
 		return
 	}
 
 	err = h.service.CreateBucket(ctx, req.Name)
 	if err != nil {
-		serde.ExtractAndWrite(ctx, w, err)
+		grape.RespondFromErr(ctx, w, err)
 		return
 	}
 
-	serde.WriteJson(ctx, w, http.StatusNoContent, nil)
+	grape.WriteJson(ctx, w, grape.WithStatus(http.StatusNoContent))
 }
 
-type CreateBucketRequest struct {
+type createBucketRequest struct {
 	Name string `json:"name"`
 }

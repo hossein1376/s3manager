@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
-	"strconv"
 
-	"github.com/hossein1376/s3manager/internal/handlers/serde"
+	"github.com/hossein1376/grape"
 	"github.com/hossein1376/s3manager/internal/model"
 )
 
@@ -13,17 +14,22 @@ func (h *Handler) ListBucketsHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	filter := query.Get("filter")
 	token := query.Get("token")
-	countStr := query.Get("count")
-
-	var count int64 = 50
-	if countStr != "" {
-		var err error
-		count, err = strconv.ParseInt(countStr, 10, 32)
-		if err != nil {
-			serde.ExtractAndWrite(ctx, w, err) //TODO
-			return
+	count, err := grape.Query(query, "count", grape.ParseInt[int32]())
+	switch {
+	case err == nil:
+		// continue
+	case errors.Is(err, grape.ErrMissingQuery):
+		count = 50 // default value
+	default:
+		resp := grape.Response{
+			Message: "Bad input", Data: fmt.Sprintf("parse count: %s", err),
 		}
+		grape.WriteJson(
+			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
+		)
+		return
 	}
+
 	opts := model.ListBucketsOptions{}
 	if filter != "" {
 		opts.Filter = &filter
@@ -32,16 +38,16 @@ func (h *Handler) ListBucketsHandler(w http.ResponseWriter, r *http.Request) {
 		opts.ContinuationToken = &token
 	}
 
-	buckets, next, err := h.service.ListBuckets(ctx, int32(count), opts)
+	buckets, next, err := h.service.ListBuckets(ctx, count, opts)
 	if err != nil {
-		serde.ExtractAndWrite(ctx, w, err)
+		grape.RespondFromErr(ctx, w, err)
 		return
 	}
-	resp := ListBucketsResponse{Buckets: buckets, NextToken: next}
-	serde.WriteJson(ctx, w, http.StatusOK, resp)
+	resp := listBucketsResponse{Buckets: buckets, NextToken: next}
+	grape.WriteJson(ctx, w, grape.WithData(resp))
 }
 
-type ListBucketsResponse struct {
+type listBucketsResponse struct {
 	Buckets   []model.Bucket `json:"buckets"`
 	NextToken *string        `json:"next_token,omitempty"`
 }

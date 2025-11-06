@@ -5,34 +5,54 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/hossein1376/s3manager/internal/handlers/serde"
+	"github.com/hossein1376/grape"
+	"github.com/hossein1376/grape/validator"
 )
 
 func (h *Handler) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	bucketName := r.PathValue("bucket")
 	objectName := r.PathValue("object")
-	if bucketName == "" || objectName == "" {
-		resp := serde.Response{
-			Message: "bucket name and object name must be specified",
-		}
-		serde.WriteJson(ctx, w, http.StatusBadRequest, resp)
+	v := validator.New()
+	v.Check(
+		"bucket",
+		validator.Case{
+			Cond: validator.Empty(bucketName), Msg: "bucket name is required",
+		},
+		validator.Case{
+			Cond: validator.LengthMin(bucketName, 3),
+			Msg:  "Bucket name cannot be shorter than 3 characters",
+		},
+		validator.Case{
+			Cond: validator.Contains(bucketName, "/"),
+			Msg:  "Bucket name cannot contain invalid characters",
+		},
+	)
+	v.Check(
+		"key",
+		validator.Case{
+			Cond: validator.Empty(objectName), Msg: "object name is required",
+		},
+	)
+	if ok := v.Validate(); !ok {
+		resp := grape.Response{Message: "Bad input", Data: v.Errors}
+		grape.WriteJson(
+			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
+		)
 		return
 	}
 
 	object, ct, err := h.service.GetObject(ctx, bucketName, objectName)
 	if err != nil {
-		serde.ExtractAndWrite(ctx, w, fmt.Errorf("getting object: %w", err))
+		grape.RespondFromErr(ctx, w, fmt.Errorf("getting object: %w", err))
 		return
 	}
 	defer object.Close()
-	var contentType string
+
+	contentType := "application/octet-stream"
 	if ct != nil {
 		contentType = *ct
-	} else {
-		contentType = "application/octet-stream"
 	}
-
 	w.Header().Set(
 		"Content-Disposition",
 		fmt.Sprintf("attachment; filename=\"%s\"", objectName),
@@ -41,9 +61,9 @@ func (h *Handler) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err = io.Copy(w, object)
 	if err != nil {
-		serde.InternalErrWrite(ctx, w, fmt.Errorf("copying object: %w", err))
+		grape.RespondFromErr(ctx, w, fmt.Errorf("copying object: %w", err))
 		return
 	}
 
-	serde.WriteJson(ctx, w, http.StatusOK, nil)
+	grape.WriteJson(ctx, w)
 }

@@ -3,3 +3,4 @@
 /minio
 /data
 dist/
+/s3manager

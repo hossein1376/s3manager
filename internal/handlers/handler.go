@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/hossein1376/grape"
 	"github.com/hossein1376/s3manager/internal/config"
 	"github.com/hossein1376/s3manager/internal/services"
 	"github.com/hossein1376/s3manager/ui"
@@ -15,9 +16,9 @@ type Handler struct {
 }
 
 func NewServer(
-	cfg config.Config, srvc *services.Services,
+	cfg config.Config, svc *services.Services,
 ) (*http.Server, error) {
-	h := &Handler{cfg: cfg, service: srvc}
+	h := &Handler{cfg: cfg, service: svc}
 
 	uiFS, err := ui.FileSystem()
 	if err != nil {
@@ -32,41 +33,27 @@ func NewServer(
 	}, nil
 }
 
-func newRouter(h *Handler, ui http.FileSystem, disableUI bool) *http.ServeMux {
-	mux := http.NewServeMux()
+func newRouter(h *Handler, ui http.FileSystem, disableUI bool) *grape.Router {
+	r := grape.NewRouter()
+	r.UseAll(
+		grape.RequestIDMiddleware,
+		grape.LoggerMiddleware,
+		grape.RecoverMiddleware,
+		grape.CORSMiddleware,
+	)
 
 	if !disableUI {
-		mux.Handle("GET /", withDefaults(toHandlerFunc(http.FileServer(ui))))
+		r.Get("/", toHandlerFunc(http.FileServer(ui)))
 	}
-	mux.Handle("GET /api/buckets", withDefaults(h.ListBucketsHandler))
-	mux.Handle("POST /api/buckets", withDefaults(h.CreateBucketHandler))
-	mux.Handle("GET /api/buckets/{bucket}", withDefaults(h.ListObjectsHandler))
-	mux.Handle(
-		"DELETE /api/buckets/{bucket}", withDefaults(h.DeleteBucketHandler),
-	)
-	mux.Handle(
-		"PUT /api/buckets/{bucket}/objects", withDefaults(h.PutObjectHandler),
-	)
-	mux.Handle(
-		"GET /api/buckets/{bucket}/objects/{object}",
-		withDefaults(h.GetObjectHandler),
-	)
-	mux.Handle(
-		"DELETE /api/buckets/{bucket}/objects/{object}",
-		withDefaults(h.DeleteObjectHandle),
-	)
+	r.Get("/api/buckets", h.ListBucketsHandler)
+	r.Post("/api/buckets", h.CreateBucketHandler)
+	r.Get("/api/buckets/{bucket}", h.ListObjectsHandler)
+	r.Delete("/api/buckets/{bucket}", h.DeleteBucketHandler)
+	r.Put("/api/buckets/{bucket}/objects", h.PutObjectHandler)
+	r.Get("/api/buckets/{bucket}/objects/{object}", h.GetObjectHandler)
+	r.Delete("/api/buckets/{bucket}/objects/{object}", h.DeleteObjectHandle)
 
-	return mux
-}
-
-func withDefaults(handler http.HandlerFunc) http.Handler {
-	return withMiddlewares(
-		handler,
-		requestIDMiddleware,
-		loggerMiddleware,
-		recoverMiddleware,
-		corsMiddleware,
-	)
+	return r
 }
 
 func toHandlerFunc(h http.Handler) http.HandlerFunc {
