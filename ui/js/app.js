@@ -99,10 +99,15 @@ async function loadObjects(reset = true) {
   document.querySelector("#bucket-title").textContent = bucket;
 
   if (path === "") {
-    document.querySelector("#root-button").remove();
+    const button = document.querySelector("#back-button");
+    if (button) button.remove();
   } else {
-    document.querySelector("#root-button").href =
-      `objects.html?bucket=${encodeURIComponent(bucket)}&path=`;
+    document.querySelector("#current-path").textContent = "/" + path;
+    const pervPath = path.includes("/")
+      ? path.slice(0, path.lastIndexOf("/"))
+      : "";
+    document.querySelector("#back-button").href =
+      `objects.html?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(pervPath)}`;
   }
 
   if (reset) {
@@ -127,18 +132,22 @@ async function loadObjects(reset = true) {
   const tbody = document.querySelector("#objects-table tbody");
   data.list.forEach((o) => {
     const tr = document.createElement("tr");
-    let action = `<button onclick="downloadObject('${bucket}','${o.key}')">Download</button>`;
+    let action = `<button onclick="downloadObject('${bucket}','${path === "" ? path : path + "/" + o.key}')">Download</button>`;
     if (o.is_dir) {
-      action = `<button onclick="openBucket('${bucket}' ,'${o.key}')">Open</button>`;
+      action = `<button onclick="openBucket('${bucket}' ,'${path === "" ? o.key : path + "/" + o.key}')">Open</button>`;
     }
     tr.innerHTML = `
-      <td><input type="checkbox" class="select-object" value="${o.key}"></td>
+      ${
+        o.is_dir
+          ? `<td><input type="checkbox" disabled=true></td>`
+          : `<td><input type="checkbox" class="select-object" value="${o.key}"></td>`
+      }
       <td>${o.key}</td>
       <td>${formatFileSize(o.size)}</td>
       <td>${o.last_modified ?? "-"}</td>
       <td>
         ${action}
-        <button class="outline contrast pico-background-red-600" onclick="deleteObject('${bucket}','${o.key}')">Delete</button>
+        <button class="outline contrast pico-background-red-600" onclick="deleteObject('${bucket}','${path === "" ? o.key : path + "/" + o.key}')">Delete</button>
       </td>`;
     tbody.appendChild(tr);
   });
@@ -210,7 +219,7 @@ async function loadObjects(reset = true) {
     for (const key of keys) {
       try {
         await fetch(
-          `${API_BASE}/buckets/${getBucketName()}/objects/${encodeURIComponent(key)}`,
+          `${API_BASE}/buckets/${getBucketName()}/objects/${encodeURIComponent(path === "" ? key : path + "/" + key)}`,
           { method: "DELETE" },
         );
       } catch (err) {
@@ -229,7 +238,7 @@ async function loadObjects(reset = true) {
     if (keys.length === 0) return showToast("No objects selected");
     keys.forEach((key) => {
       const a = document.createElement("a");
-      a.href = `${API_BASE}/buckets/${getBucketName()}/objects/${encodeURIComponent(key)}`;
+      a.href = `${API_BASE}/buckets/${getBucketName()}/objects/${encodeURIComponent(path === "" ? key : path + "/" + key)}`;
       a.download = key;
       a.click();
     });

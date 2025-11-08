@@ -17,14 +17,14 @@ func (h *Handler) ListObjectsHandler(w http.ResponseWriter, r *http.Request) {
 	v.Check(
 		"bucket",
 		validator.Case{
-			Cond: validator.Empty(bucketName), Msg: "bucket name is required",
+			Cond: !validator.Empty(bucketName), Msg: "bucket name is required",
 		},
 		validator.Case{
 			Cond: validator.LengthMin(bucketName, 3),
 			Msg:  "Bucket name cannot be shorter than 3 characters",
 		},
 		validator.Case{
-			Cond: validator.Contains(bucketName, "/"),
+			Cond: !validator.Contains(bucketName, "/"),
 			Msg:  "Bucket name cannot contain invalid characters",
 		},
 	)

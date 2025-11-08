@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
 
+	"github.com/hossein1376/grape/errs"
 	"github.com/hossein1376/s3manager/internal/model"
-	"github.com/hossein1376/s3manager/pkg/errs"
 )
 
 var (
@@ -56,18 +56,28 @@ func (s *Services) ListObjects(
 	}
 	objects := make([]model.Object, 0, *list.KeyCount)
 	for _, obj := range list.CommonPrefixes {
+		var key *string
+		if obj.Prefix != nil {
+			key = aws.String(
+				strings.TrimSuffix(strings.TrimPrefix(*obj.Prefix, opt.Path+"/"), "/"),
+			)
+		}
 		objects = append(objects, model.Object{
-			Key:   aws.String(strings.TrimSuffix(*obj.Prefix, "/")),
+			Key:   key,
 			IsDir: true,
 		})
 	}
 	for _, obj := range list.Contents {
 		var lastModified *string
+		var key *string
 		if obj.LastModified != nil {
 			lastModified = aws.String(obj.LastModified.Format(time.DateTime))
 		}
+		if obj.Key != nil {
+			key = aws.String(strings.TrimPrefix(*obj.Key, opt.Path+"/"))
+		}
 		objects = append(objects, model.Object{
-			Key:          obj.Key,
+			Key:          key,
 			Size:         obj.Size,
 			LastModified: lastModified,
 		})

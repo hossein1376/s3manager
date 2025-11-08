@@ -30,7 +30,7 @@ func (h *Handler) CreateBucketHandler(w http.ResponseWriter, r *http.Request) {
 			Msg:  "Bucket name cannot be shorter than 3 characters",
 		},
 		validator.Case{
-			Cond: validator.Contains(req.Name, "/"),
+			Cond: !validator.Contains(req.Name, "/"),
 			Msg:  "Bucket name cannot contain invalid characters",
 		},
 	)

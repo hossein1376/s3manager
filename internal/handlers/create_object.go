@@ -6,8 +6,8 @@ import (
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/hossein1376/grape"
+	"github.com/hossein1376/grape/slogger"
 	"github.com/hossein1376/grape/validator"
-	"github.com/hossein1376/s3manager/pkg/slogger"
 )
 
 func (h *Handler) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
@@ -18,21 +18,21 @@ func (h *Handler) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	v.Check(
 		"bucket",
 		validator.Case{
-			Cond: validator.Empty(bucketName), Msg: "bucket name is required",
+			Cond: !validator.Empty(bucketName), Msg: "bucket name is required",
 		},
 		validator.Case{
 			Cond: validator.LengthMin(bucketName, 3),
 			Msg:  "Bucket name cannot be shorter than 3 characters",
 		},
 		validator.Case{
-			Cond: validator.Contains(bucketName, "/"),
+			Cond: !validator.Contains(bucketName, "/"),
 			Msg:  "Bucket name cannot contain invalid characters",
 		},
 	)
 	v.Check(
 		"key",
 		validator.Case{
-			Cond: validator.Empty(objectKey), Msg: "object name is required",
+			Cond: !validator.Empty(objectKey), Msg: "object name is required",
 		},
 	)
 	if ok := v.Validate(); !ok {

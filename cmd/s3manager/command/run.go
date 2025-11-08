@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/hossein1376/grape/slogger"
 	"github.com/hossein1376/s3manager/internal/services"
-	"github.com/hossein1376/s3manager/pkg/slogger"
 
 	"github.com/hossein1376/s3manager/internal/config"
 	"github.com/hossein1376/s3manager/internal/handlers"
@@ -30,9 +30,7 @@ func Run() error {
 		return fmt.Errorf("new config: %w", err)
 	}
 
-	logger := slogger.NewJSONLogger(cfg.Logger.Level, os.Stdout)
-	slog.SetDefault(logger)
-
+	slogger.NewDefault(slogger.WithLevel(cfg.Logger.Level))
 	if cfg.IsDefault {
 		slog.Warn("using default configs, use -c flag to specify configuration file")
 	}
