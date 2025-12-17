@@ -24,7 +24,7 @@ func (h *Handler) ListBucketsHandler(w http.ResponseWriter, r *http.Request) {
 		resp := grape.Response{
 			Message: "Bad input", Data: fmt.Sprintf("parse count: %s", err),
 		}
-		grape.WriteJson(
+		grape.WriteJSON(
 			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
 		)
 		return
@@ -40,11 +40,11 @@ func (h *Handler) ListBucketsHandler(w http.ResponseWriter, r *http.Request) {
 
 	buckets, next, err := h.service.ListBuckets(ctx, count, opts)
 	if err != nil {
-		grape.RespondFromErr(ctx, w, err)
+		grape.ExtractFromErr(ctx, w, err)
 		return
 	}
 	resp := listBucketsResponse{Buckets: buckets, NextToken: next}
-	grape.WriteJson(ctx, w, grape.WithData(resp))
+	grape.WriteJSON(ctx, w, grape.WithData(resp))
 }
 
 type listBucketsResponse struct {

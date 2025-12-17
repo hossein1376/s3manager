@@ -36,7 +36,7 @@ func (h *Handler) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	if ok := v.Validate(); !ok {
 		resp := grape.Response{Message: "Bad input", Data: v.Errors}
-		grape.WriteJson(
+		grape.WriteJSON(
 			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
 		)
 		return
@@ -44,7 +44,7 @@ func (h *Handler) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	object, ct, err := h.service.GetObject(ctx, bucketName, objectName)
 	if err != nil {
-		grape.RespondFromErr(ctx, w, fmt.Errorf("getting object: %w", err))
+		grape.ExtractFromErr(ctx, w, fmt.Errorf("getting object: %w", err))
 		return
 	}
 	defer object.Close()
@@ -61,9 +61,9 @@ func (h *Handler) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	_, err = io.Copy(w, object)
 	if err != nil {
-		grape.RespondFromErr(ctx, w, fmt.Errorf("copying object: %w", err))
+		grape.ExtractFromErr(ctx, w, fmt.Errorf("copying object: %w", err))
 		return
 	}
 
-	grape.WriteJson(ctx, w)
+	grape.WriteJSON(ctx, w)
 }

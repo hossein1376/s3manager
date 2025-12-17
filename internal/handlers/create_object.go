@@ -37,7 +37,7 @@ func (h *Handler) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	if ok := v.Validate(); !ok {
 		resp := grape.Response{Message: "Bad input", Data: v.Errors}
-		grape.WriteJson(
+		grape.WriteJSON(
 			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
 		)
 		return
@@ -45,14 +45,14 @@ func (h *Handler) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseMultipartForm(h.cfg.S3.MaxSizeBytes)
 	if err != nil {
-		grape.RespondFromErr(
+		grape.ExtractFromErr(
 			ctx, w, fmt.Errorf("parsing multipart form: %w", err),
 		)
 		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		grape.RespondFromErr(
+		grape.ExtractFromErr(
 			ctx, w, fmt.Errorf("getting file from form: %w", err),
 		)
 		return
@@ -64,7 +64,7 @@ func (h *Handler) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 	mimeType, err := mimetype.DetectReader(file)
 	if err != nil {
-		grape.RespondFromErr(ctx, w, fmt.Errorf("detecting mimetype: %w", err))
+		grape.ExtractFromErr(ctx, w, fmt.Errorf("reading file: %w", err))
 		return
 	}
 
@@ -72,11 +72,11 @@ func (h *Handler) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 		ctx, bucketName, objectKey, mimeType.String(), file,
 	)
 	if err != nil {
-		grape.RespondFromErr(ctx, w, fmt.Errorf("putting object: %w", err))
+		grape.ExtractFromErr(ctx, w, fmt.Errorf("putting object: %w", err))
 		return
 	}
 
-	grape.WriteJson(
+	grape.WriteJSON(
 		ctx,
 		w,
 		grape.WithStatus(http.StatusCreated),

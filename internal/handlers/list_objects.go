@@ -30,7 +30,7 @@ func (h *Handler) ListObjectsHandler(w http.ResponseWriter, r *http.Request) {
 	)
 	if ok := v.Validate(); !ok {
 		resp := grape.Response{Message: "Bad input", Data: v.Errors}
-		grape.WriteJson(
+		grape.WriteJSON(
 			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
 		)
 		return
@@ -51,7 +51,7 @@ func (h *Handler) ListObjectsHandler(w http.ResponseWriter, r *http.Request) {
 		resp := grape.Response{
 			Message: "Bad input", Data: fmt.Sprintf("parse count: %s", err),
 		}
-		grape.WriteJson(
+		grape.WriteJSON(
 			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
 		)
 		return
@@ -66,11 +66,11 @@ func (h *Handler) ListObjectsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	list, next, err := h.service.ListObjects(ctx, bucketName, int32(count), opts)
 	if err != nil {
-		grape.RespondFromErr(ctx, w, err)
+		grape.ExtractFromErr(ctx, w, err)
 		return
 	}
 	resp := listObjectsResponse{List: list, NextToken: next}
-	grape.WriteJson(ctx, w, grape.WithData(resp))
+	grape.WriteJSON(ctx, w, grape.WithData(resp))
 }
 
 type listObjectsResponse struct {

@@ -36,7 +36,7 @@ func (h *Handler) DeleteObjectHandle(w http.ResponseWriter, r *http.Request) {
 	)
 	if ok := v.Validate(); !ok {
 		resp := grape.Response{Message: "Bad input", Data: v.Errors}
-		grape.WriteJson(
+		grape.WriteJSON(
 			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
 		)
 		return
@@ -44,9 +44,9 @@ func (h *Handler) DeleteObjectHandle(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.DeleteObject(ctx, bucketName, objectName)
 	if err != nil {
-		grape.RespondFromErr(ctx, w, fmt.Errorf("removing object: %w", err))
+		grape.ExtractFromErr(ctx, w, fmt.Errorf("removing object: %w", err))
 		return
 	}
 
-	grape.WriteJson(ctx, w, grape.WithStatus(http.StatusNoContent))
+	grape.WriteJSON(ctx, w, grape.WithStatus(http.StatusNoContent))
 }
