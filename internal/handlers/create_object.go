@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gabriel-vasile/mimetype"
@@ -62,14 +64,15 @@ func (h *Handler) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 			slogger.Error(ctx, "closing file", slogger.Err("error", err))
 		}
 	}()
-	mimeType, err := mimetype.DetectReader(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		grape.ExtractFromErr(ctx, w, fmt.Errorf("reading file: %w", err))
 		return
 	}
+	mimeType := mimetype.Detect(data)
 
 	obj, err := h.service.PutObject(
-		ctx, bucketName, objectKey, mimeType.String(), file,
+		ctx, bucketName, objectKey, mimeType.String(), bytes.NewReader(data),
 	)
 	if err != nil {
 		grape.ExtractFromErr(ctx, w, fmt.Errorf("putting object: %w", err))
