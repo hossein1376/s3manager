@@ -1,56 +1,49 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/hossein1376/grape"
+	"github.com/hossein1376/grape/errs"
 	"github.com/hossein1376/grape/validator"
 )
 
 func (h *Handler) CreateBucketHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var req createBucketRequest
-	err := grape.ReadJson(w, r, &req)
+	req, err := grape.ReadJSON[CreateBucketRequest](w, r)
 	if err != nil {
-		resp := grape.Response{
-			Message: fmt.Sprintf("decoding body JSON: %s", err),
-		}
-		grape.WriteJson(
-			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
-		)
-		return
-	}
-
-	v := validator.New()
-	v.Check(
-		"name",
-		validator.Case{
-			Cond: validator.LengthMin(req.Name, 3),
-			Msg:  "Bucket name cannot be shorter than 3 characters",
-		},
-		validator.Case{
-			Cond: !validator.Contains(req.Name, "/"),
-			Msg:  "Bucket name cannot contain invalid characters",
-		},
-	)
-	if ok := v.Validate(); !ok {
-		resp := grape.Response{Message: "Bad input", Data: v.Errors}
-		grape.WriteJson(
-			ctx, w, grape.WithStatus(http.StatusBadRequest), grape.WithData(resp),
-		)
+		grape.ExtractFromErr(ctx, w, errs.BadRequest(errs.WithMsg(err.Error())))
 		return
 	}
 
 	err = h.service.CreateBucket(ctx, req.Name)
 	if err != nil {
-		grape.RespondFromErr(ctx, w, err)
+		grape.ExtractFromErr(ctx, w, err)
 		return
 	}
 
-	grape.WriteJson(ctx, w, grape.WithStatus(http.StatusNoContent))
+	grape.WriteJSON(ctx, w, grape.WithStatus(http.StatusNoContent))
 }
 
-type createBucketRequest struct {
+type CreateBucketRequest struct {
 	Name string `json:"name"`
+}
+
+func (c CreateBucketRequest) Validate() error {
+	v := validator.New()
+	v.Check(
+		"name",
+		validator.Case{
+			Cond: validator.LengthMin(c.Name, 3),
+			Msg:  "Bucket name cannot be shorter than 3 characters",
+		},
+		validator.Case{
+			Cond: validator.Not(validator.Contains(c.Name, "/")),
+			Msg:  "Bucket name cannot contain invalid characters",
+		},
+	)
+	if ok := v.Validate(); !ok {
+		return errs.BadRequest(errs.WithMsg(v.Errors.Error()))
+	}
+	return nil
 }
