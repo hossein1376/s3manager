@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -88,27 +89,64 @@ func (s *Services) ListObjects(
 func (s *Services) ListBuckets(
 	ctx context.Context, count int32, opts model.ListBucketsOptions,
 ) ([]model.Bucket, *string, error) {
-	params := &s3.ListBucketsInput{
-		ContinuationToken: opts.ContinuationToken,
-		MaxBuckets:        aws.Int32(count),
-		Prefix:            opts.Filter,
-	}
-	list, err := s.s3Client.ListBuckets(ctx, params)
-	if err != nil {
-		return nil, nil, err
-	}
-	buckets := make([]model.Bucket, len(list.Buckets))
-	for i, bucket := range list.Buckets {
-		var createdAt *string
-		if bucket.CreationDate != nil {
-			createdAt = aws.String(bucket.CreationDate.Format(time.DateTime))
+	// List all buckets since S3 doesn't support prefix filtering
+	var allBuckets []model.Bucket
+	var continuationToken *string
+	for {
+		params := &s3.ListBucketsInput{
+			ContinuationToken: continuationToken,
 		}
-		buckets[i] = model.Bucket{
-			Name:      bucket.Name,
-			CreatedAt: createdAt,
+		list, err := s.s3Client.ListBuckets(ctx, params)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, bucket := range list.Buckets {
+			var createdAt *string
+			if bucket.CreationDate != nil {
+				createdAt = aws.String(bucket.CreationDate.Format(time.DateTime))
+			}
+			allBuckets = append(allBuckets, model.Bucket{
+				Name:      bucket.Name,
+				CreatedAt: createdAt,
+			})
+		}
+		if list.ContinuationToken == nil {
+			break
+		}
+		continuationToken = list.ContinuationToken
+	}
+
+	// Filter by prefix if provided
+	if opts.Filter != nil && *opts.Filter != "" {
+		filtered := make([]model.Bucket, 0)
+		for _, b := range allBuckets {
+			if b.Name != nil && strings.HasPrefix(*b.Name, *opts.Filter) {
+				filtered = append(filtered, b)
+			}
+		}
+		allBuckets = filtered
+	}
+
+	// Apply pagination
+	start := 0
+	if opts.ContinuationToken != nil {
+		// For simplicity, assume token is index as string
+		if idx, err := strconv.Atoi(*opts.ContinuationToken); err == nil {
+			start = idx
 		}
 	}
-	return buckets, list.ContinuationToken, nil
+	end := start + int(count)
+	if end > len(allBuckets) {
+		end = len(allBuckets)
+	}
+	result := allBuckets[start:end]
+
+	var nextToken *string
+	if end < len(allBuckets) {
+		nextToken = aws.String(strconv.Itoa(end))
+	}
+
+	return result, nextToken, nil
 }
 
 func (s *Services) CreateBucket(ctx context.Context, name string) error {
