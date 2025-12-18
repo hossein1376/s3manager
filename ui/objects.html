@@ -1,84 +1,169 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <title>Objects - S3 Manager</title>
-        <link rel="stylesheet" href="css/pico.min.css" />
-        <link rel="stylesheet" href="css/pico.colors.min.css" />
-        <link rel="stylesheet" href="css/custom.css" />
-    </head>
-    <body>
-        <main class="container">
-            <a href="index.html">← Buckets</a>
-            <h1>Objects in <span id="bucket-title"></span></h1>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Objects - S3 Manager</title>
+    <link rel="stylesheet" href="css/pico.min.css">
+    <link rel="stylesheet" href="css/pico.colors.min.css">
+    <link rel="stylesheet" href="css/custom.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="navbar-brand">
+            <span class="navbar-icon">☁️</span>
+            S3 Manager
+        </a>
+        <div class="navbar-nav">
+            <a href="index.html" class="nav-link nav-back">
+                ← Back to Buckets
+            </a>
+        </div>
+    </nav>
 
-            <form id="upload-form" class="grid">
-                <input type="file" id="file-input" multiple />
-                <input type="file" id="folder-input" webkitdirectory multiple />
-                <button class="pico-background-jade-600" type="submit">
-                    ⬆ Upload
+    <main class="container">
+        <!-- Page Title Bar -->
+        <div class="page-title-bar">
+            <h1 class="page-title">
+                <span>📁</span>
+                <span id="bucket-title"></span>
+                <span id="current-path" class="page-subtitle"></span>
+            </h1>
+        </div>
+
+        <!-- Combined Toolbar: Upload + Search + Actions -->
+        <div class="toolbar">
+            <!-- Upload Section -->
+            <form id="upload-form" class="toolbar-section">
+                <input type="file" id="file-input" class="toolbar-file-input" multiple>
+                <input type="file" id="folder-input" class="toolbar-file-input" webkitdirectory multiple>
+                <button type="submit" class="btn btn-success">
+                    <span class="btn-icon">⬆</span>
+                    <span class="btn-text">Upload</span>
                 </button>
             </form>
 
-            <form id="object-filter-form" class="search-row">
+            <span class="toolbar-divider"></span>
+
+            <!-- Search Section -->
+            <form id="object-filter-form" class="toolbar-section">
                 <input
                     type="search"
                     id="object-filter"
+                    class="toolbar-input"
                     placeholder="Search objects..."
-                />
-                <label>
-                    <select id="object-page-size">
-                        <option value="10">10</option>
-                        <option value="20" selected>20</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                        <option value="500">500</option>
-                        <option value="1000">1000</option>
-                    </select>
-                </label>
-                <button type="submit">🔍 Search</button>
+                    autocomplete="off"
+                >
+                <select id="object-page-size" class="toolbar-select">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="500">500</option>
+                </select>
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-icon">🔍</span>
+                    <span class="btn-text">Search</span>
+                </button>
             </form>
 
-            <!--<div class="page-size-control"></div>-->
+            <span class="toolbar-divider"></span>
 
-            <div style="display: flex; gap: 1rem">
-                <a href="" id="back-button">← Back</a>
-                <div id="current-path"></div>
-            </div>
-            <div class="grid">
-                <button id="download-selected">⬇ Download Selected</button>
-                <button
-                    id="delete-selected"
-                    class="outline contrast pico-background-red-600"
-                >
-                    🗑 Delete Selected
+            <!-- Bulk Actions -->
+            <div class="toolbar-section">
+                <a href="#" id="back-button" class="btn btn-secondary">
+                    <span class="btn-icon">←</span>
+                    <span class="btn-text">Up</span>
+                </a>
+                <button id="download-selected" class="btn btn-primary">
+                    <span class="btn-icon">⬇</span>
+                    <span class="btn-text">Download</span>
+                </button>
+                <button id="delete-selected" class="btn btn-danger">
+                    <span class="btn-icon">🗑</span>
+                    <span class="btn-text">Delete</span>
                 </button>
             </div>
+        </div>
 
+        <!-- Objects Table -->
+        <section class="table-container">
             <div class="overflow-auto">
                 <table id="objects-table">
                     <thead>
                         <tr>
-                            <th><input type="checkbox" id="select-all" /></th>
-                            <th>Key</th>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="select-all" title="Select all">
+                            </th>
+                            <th>Name</th>
                             <th>Size</th>
-                            <th>Last Modified</th>
+                            <th>Modified</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody>
+                        <!-- Objects loaded dynamically -->
+                    </tbody>
                 </table>
             </div>
+        </section>
 
-            <button id="load-more-objects" style="display: none">
-                Load More
-            </button>
-        </main>
+        <!-- Load More Button -->
+        <button id="load-more-objects" style="display: none;">
+            Load More Objects
+        </button>
+    </main>
 
-        <script src="js/app.js"></script>
-        <script>
-            loadObjects();
-        </script>
-        <div id="toast" class="toast"></div>
-    </body>
+    <!-- Delete Object Modal -->
+    <dialog id="delete-object-modal">
+        <article>
+            <h3>🗑️ Delete Object</h3>
+            <p>Are you sure you want to delete "<strong id="delete-object-name"></strong>"?</p>
+            <p>This action cannot be undone.</p>
+            <div id="delete-object-recursive-container" style="display: none;">
+                <label>
+                    <input type="checkbox" id="delete-object-recursive">
+                    Delete recursively (all objects in folder)
+                </label>
+            </div>
+            <footer>
+                <button id="cancel-delete-object" class="btn btn-secondary">Cancel</button>
+                <button id="confirm-delete-object" class="btn btn-danger">
+                    <span class="btn-icon">🗑</span>
+                    Delete
+                </button>
+            </footer>
+        </article>
+    </dialog>
+
+    <!-- Delete Selected Modal -->
+    <dialog id="delete-selected-modal">
+        <article>
+            <h3>🗑️ Delete Selected</h3>
+            <p>Are you sure you want to delete <strong id="delete-selected-count"></strong> object(s)?</p>
+            <p>This action cannot be undone.</p>
+            <footer>
+                <button id="cancel-delete-selected" class="btn btn-secondary">Cancel</button>
+                <button id="confirm-delete-selected" class="btn btn-danger">
+                    <span class="btn-icon">🗑</span>
+                    Delete All
+                </button>
+            </footer>
+        </article>
+    </dialog>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/objects.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            ObjectsModule.init();
+        });
+    </script>
+</body>
 </html>
