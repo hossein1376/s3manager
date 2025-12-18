@@ -9,7 +9,7 @@ require (
 	github.com/aws/smithy-go v1.23.0
 	github.com/gabriel-vasile/mimetype v1.4.10
 	github.com/goccy/go-yaml v1.18.0
-	github.com/hossein1376/grape v0.4.1-0.20251216195533-1db0eb2252da
+	github.com/hossein1376/grape v0.4.1-0.20251218133026-5612b4d915dd
 )
 
 require (

@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/hossein1376/grape"
+	"github.com/hossein1376/grape/errs"
 	"github.com/hossein1376/grape/validator"
 )
 
@@ -13,18 +16,29 @@ func (h *Handler) DeleteObjectHandle(w http.ResponseWriter, r *http.Request) {
 
 	bucketName := r.PathValue("bucket")
 	objectName := r.PathValue("object")
+	recursive, err := grape.Query(r.URL.Query(), "recursive", strconv.ParseBool)
+	if err != nil {
+		if !errors.Is(err, grape.ErrMissingQuery) {
+			grape.ExtractFromErr(
+				ctx, w, errs.BadRequest(errs.WithMsg("Invalid recursive param")),
+			)
+			return
+		}
+		recursive = false
+	}
 	v := validator.New()
 	v.Check(
 		"bucket",
 		validator.Case{
-			Cond: !validator.Empty(bucketName), Msg: "bucket name is required",
+			Cond: validator.Not(validator.Empty(bucketName)),
+			Msg:  "bucket name is required",
 		},
 		validator.Case{
 			Cond: validator.LengthMin(bucketName, 3),
 			Msg:  "Bucket name cannot be shorter than 3 characters",
 		},
 		validator.Case{
-			Cond: !validator.Contains(bucketName, "/"),
+			Cond: validator.Not(validator.Contains(bucketName, "/")),
 			Msg:  "Bucket name cannot contain invalid characters",
 		},
 	)
@@ -42,7 +56,7 @@ func (h *Handler) DeleteObjectHandle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.service.DeleteObject(ctx, bucketName, objectName)
+	err = h.service.DeleteObject(ctx, bucketName, objectName, recursive)
 	if err != nil {
 		grape.ExtractFromErr(ctx, w, fmt.Errorf("removing object: %w", err))
 		return

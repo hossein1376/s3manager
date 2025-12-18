@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -51,7 +52,7 @@ func (s *Services) ListObjects(
 	list, err := s.s3Client.ListObjectsV2(ctx, params)
 	if err != nil {
 		if strings.Contains(err.Error(), "NoSuchBucket") {
-			return nil, nil, errs.NotFound(errs.WithErr(ErrMissingBucket))
+			return nil, nil, errs.NotFound(errs.WithMsg(ErrMissingBucket.Error()))
 		}
 		return nil, nil, err
 	}
@@ -158,15 +159,22 @@ func (s *Services) CreateBucket(ctx context.Context, name string) error {
 	case err == nil:
 		return nil
 	case strings.Contains(err.Error(), "BucketAlreadyOwnedByYou"):
-		return errs.Conflict(errs.WithErr(ErrExistingBucket))
+		return errs.Conflict(errs.WithMsg(ErrExistingBucket.Error()))
 	case strings.Contains(err.Error(), "InvalidBucketName"):
-		return errs.BadRequest(errs.WithErr(ErrInvalidName))
+		return errs.BadRequest(errs.WithMsg(ErrInvalidName.Error()))
 	default:
 		return err
 	}
 }
 
-func (s *Services) DeleteBucket(ctx context.Context, name string) error {
+func (s *Services) DeleteBucket(ctx context.Context, name string, recursive bool) error {
+	if recursive {
+		// Delete all objects in the bucket first
+		err := s.deleteAllObjects(ctx, name)
+		if err != nil {
+			return fmt.Errorf("deleting objects in bucket: %w", err)
+		}
+	}
 	params := &s3.DeleteBucketInput{
 		Bucket: aws.String(name),
 	}
@@ -175,10 +183,39 @@ func (s *Services) DeleteBucket(ctx context.Context, name string) error {
 	case err == nil:
 		return nil
 	case strings.Contains(err.Error(), "BucketNotEmpty"):
-		return errs.Conflict(errs.WithErr(ErrBucketNotEmpty))
+		return errs.Conflict(errs.WithMsg(ErrBucketNotEmpty.Error()))
 	default:
-		return err
+		return fmt.Errorf("deleting bucket: %w", err)
 	}
+}
+
+func (s *Services) deleteAllObjects(ctx context.Context, bucketName string) error {
+	// List all objects
+	params := &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucketName),
+	}
+	for {
+		list, err := s.s3Client.ListObjectsV2(ctx, params)
+		if err != nil {
+			return fmt.Errorf("listing objects for deletion: %w", err)
+		}
+		// Delete objects in batches
+		for _, obj := range list.Contents {
+			delParams := &s3.DeleteObjectInput{
+				Bucket: aws.String(bucketName),
+				Key:    obj.Key,
+			}
+			_, err := s.s3Client.DeleteObject(ctx, delParams)
+			if err != nil {
+				return fmt.Errorf("deleting object %s: %w", *obj.Key, err)
+			}
+		}
+		if list.NextContinuationToken == nil {
+			break
+		}
+		params.ContinuationToken = list.NextContinuationToken
+	}
+	return nil
 }
 
 func (s *Services) PutObject(
@@ -194,7 +231,7 @@ func (s *Services) PutObject(
 	if err != nil {
 		switch {
 		case strings.Contains(err.Error(), "NoSuchBucket"):
-			return nil, errs.NotFound(errs.WithErr(ErrMissingBucket))
+			return nil, errs.NotFound(errs.WithMsg(ErrMissingBucket.Error()))
 		default:
 			return nil, err
 		}
@@ -208,14 +245,48 @@ func (s *Services) PutObject(
 }
 
 func (s *Services) DeleteObject(
-	ctx context.Context, bucketName, objectKey string,
+	ctx context.Context, bucketName, objectKey string, recursive bool,
 ) error {
+	if recursive {
+		return s.deleteObjectsWithPrefix(ctx, bucketName, objectKey)
+	}
 	params := &s3.DeleteObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(objectKey),
 	}
 	_, err := s.s3Client.DeleteObject(ctx, params)
 	return err
+}
+
+func (s *Services) deleteObjectsWithPrefix(
+	ctx context.Context, bucketName, prefix string,
+) error {
+	params := &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucketName),
+		Prefix: aws.String(prefix),
+	}
+	for {
+		list, err := s.s3Client.ListObjectsV2(ctx, params)
+		if err != nil {
+			return fmt.Errorf("listing objects for deletion: %w", err)
+		}
+		// Delete objects in batches
+		for _, obj := range list.Contents {
+			delParams := &s3.DeleteObjectInput{
+				Bucket: aws.String(bucketName),
+				Key:    obj.Key,
+			}
+			_, err := s.s3Client.DeleteObject(ctx, delParams)
+			if err != nil {
+				return fmt.Errorf("deleting object %s: %w", *obj.Key, err)
+			}
+		}
+		if list.NextContinuationToken == nil {
+			break
+		}
+		params.ContinuationToken = list.NextContinuationToken
+	}
+	return nil
 }
 
 func (s *Services) GetObject(
@@ -229,7 +300,9 @@ func (s *Services) GetObject(
 	if err != nil {
 		var opErr *smithy.OperationError
 		if errors.As(err, &opErr) {
-			return nil, nil, errs.NotFound(errs.WithErr(opErr.Unwrap()))
+			return nil, nil, errs.NotFound(
+				errs.WithErr(opErr.Unwrap()), errs.WithMsg("object not found"),
+			)
 		}
 		return nil, nil, err
 	}
