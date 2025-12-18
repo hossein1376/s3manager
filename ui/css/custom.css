@@ -58,8 +58,8 @@
     --spacing-xl: 2rem;
 
     /* Font sizes */
-    --font-xs: 0.75rem;
-    --font-sm: 0.875rem;
+    --font-xs: 0.8rem;
+    --font-sm: 0.9rem;
     --font-base: 1rem;
     --font-lg: 1.125rem;
     --font-xl: 1.25rem;
@@ -696,6 +696,16 @@ dialog label {
     color: transparent !important;
 }
 
+[aria-busy="true"]:not(input, select, textarea):is(
+        button,
+        [type="submit"],
+        [type="button"],
+        [type="reset"],
+        [role="button"]
+    ):not(.outline)::before {
+    display: none;
+}
+
 [aria-busy="true"]::after {
     content: "";
     position: absolute;
@@ -740,19 +750,6 @@ dialog label {
     .nav-back {
         padding: var(--spacing-sm) var(--spacing-md);
         font-size: var(--font-sm);
-    }
-
-    .toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .toolbar-section {
-        flex-wrap: wrap;
-    }
-
-    .toolbar-divider {
-        display: none;
     }
 
     .toolbar-input {

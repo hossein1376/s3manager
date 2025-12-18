@@ -35,6 +35,28 @@ const ObjectsModule = (function () {
       return;
     }
 
+    const urlParams = new URLSearchParams(window.location.search);
+    filter = urlParams.get("filter") || "";
+
+    // Load page size from URL, then localStorage, then default
+    const urlPageSize = parseInt(urlParams.get("count"));
+    const localPageSize = parseInt(localStorage.getItem("s3manager_page_size"));
+    pageSize = urlPageSize || localPageSize || 20;
+
+    if (pageSize) {
+      localStorage.setItem("s3manager_page_size", pageSize);
+    }
+
+    const filterInput = document.getElementById("object-filter");
+    if (filterInput) {
+      filterInput.value = filter;
+    }
+
+    const pageSizeSelect = document.getElementById("object-page-size");
+    if (pageSizeSelect) {
+      pageSizeSelect.value = pageSize;
+    }
+
     // Set bucket title
     const bucketTitle = document.getElementById("bucket-title");
     if (bucketTitle) {
@@ -74,9 +96,12 @@ const ObjectsModule = (function () {
     }
 
     if (path === "") {
-      // At root level - hide back button
+      // At root level - back to buckets list
       if (backButton) {
-        backButton.style.display = "none";
+        backButton.href = "index.html";
+        backButton.style.display = "inline-flex";
+        const btnText = backButton.querySelector(".btn-text");
+        if (btnText) btnText.textContent = "Back";
       }
     } else {
       // In a subfolder
@@ -86,6 +111,8 @@ const ObjectsModule = (function () {
       if (backButton) {
         backButton.href = `objects.html?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(prevPath)}`;
         backButton.style.display = "inline-flex";
+        const btnText = backButton.querySelector(".btn-text");
+        if (btnText) btnText.textContent = "Up";
       }
     }
   }
@@ -184,6 +211,16 @@ const ObjectsModule = (function () {
     // Show loading state
     const table = document.getElementById("objects-table");
     S3Utils.showLoading(table);
+
+    // Update URL with filter and count
+    const url = new URL(window.location);
+    if (filter) {
+      url.searchParams.set("filter", filter);
+    } else {
+      url.searchParams.delete("filter");
+    }
+    url.searchParams.set("count", pageSize);
+    window.history.replaceState({}, "", url);
 
     try {
       const data = await S3API.get(`/buckets/${bucket}`, {
@@ -417,7 +454,7 @@ const ObjectsModule = (function () {
    */
   function handleFilter(e) {
     e.preventDefault();
-    filter = document.getElementById("object-filter").value;
+    filter = document.getElementById("object-filter").value.trim();
     loadObjects(true);
   }
 
@@ -427,6 +464,7 @@ const ObjectsModule = (function () {
    */
   function handlePageSizeChange(e) {
     pageSize = Math.min(parseInt(e.target.value, 10), 1000);
+    localStorage.setItem("s3manager_page_size", pageSize);
     loadObjects(true);
   }
 

@@ -6,11 +6,34 @@ const BucketsModule = (function () {
   // Private state
   let nextToken = null;
   let filter = "";
+  let pageSize = 20;
 
   /**
    * Initializes the buckets page
    */
   function init() {
+    const urlParams = new URLSearchParams(window.location.search);
+    filter = urlParams.get("filter") || "";
+
+    // Load page size from URL, then localStorage, then default
+    const urlPageSize = parseInt(urlParams.get("count"));
+    const localPageSize = parseInt(localStorage.getItem("s3manager_page_size"));
+    pageSize = urlPageSize || localPageSize || 20;
+
+    if (pageSize) {
+      localStorage.setItem("s3manager_page_size", pageSize);
+    }
+
+    const filterInput = document.getElementById("bucket-filter");
+    if (filterInput) {
+      filterInput.value = filter;
+    }
+
+    const pageSizeSelect = document.getElementById("bucket-page-size");
+    if (pageSizeSelect) {
+      pageSizeSelect.value = pageSize;
+    }
+
     setupEventListeners();
     loadBuckets(true);
   }
@@ -29,6 +52,12 @@ const BucketsModule = (function () {
     const filterForm = document.getElementById("bucket-filter-form");
     if (filterForm) {
       filterForm.addEventListener("submit", handleFilter);
+    }
+
+    // Page size selector
+    const pageSizeSelect = document.getElementById("bucket-page-size");
+    if (pageSizeSelect) {
+      pageSizeSelect.addEventListener("change", handlePageSizeChange);
     }
 
     // Load more button
@@ -66,9 +95,19 @@ const BucketsModule = (function () {
     const table = document.getElementById("buckets-table");
     S3Utils.showLoading(table);
 
+    // Update URL with filter and count
+    const url = new URL(window.location);
+    if (filter) {
+      url.searchParams.set("filter", filter);
+    } else {
+      url.searchParams.delete("filter");
+    }
+    url.searchParams.set("count", pageSize);
+    window.history.replaceState({}, "", url);
+
     try {
       const data = await S3API.get("/buckets", {
-        count: 20,
+        count: pageSize,
         filter: filter,
         token: nextToken,
       });
@@ -175,7 +214,17 @@ const BucketsModule = (function () {
    */
   function handleFilter(e) {
     e.preventDefault();
-    filter = document.getElementById("bucket-filter").value;
+    filter = document.getElementById("bucket-filter").value.trim();
+    loadBuckets(true);
+  }
+
+  /**
+   * Handles page size change
+   * @param {Event} e - Change event
+   */
+  function handlePageSizeChange(e) {
+    pageSize = Math.min(parseInt(e.target.value, 10), 1000);
+    localStorage.setItem("s3manager_page_size", pageSize);
     loadBuckets(true);
   }
 
