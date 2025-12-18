@@ -21,6 +21,7 @@ var (
 	ErrBucketNotEmpty = errors.New("bucket is not empty")
 	ErrExistingBucket = errors.New("bucket already exists")
 	ErrMissingBucket  = errors.New("bucket not found")
+	ErrDirNotEmpty    = errors.New("directory is not empty")
 	ErrInvalidName    = errors.New("invalid bucket name")
 )
 
@@ -250,11 +251,30 @@ func (s *Services) DeleteObject(
 	if recursive {
 		return s.deleteObjectsWithPrefix(ctx, bucketName, objectKey)
 	}
+
+	// Check if attempting to delete a non-empty directory without recursive flag
+	prefix := objectKey
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	listParams := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(bucketName),
+		Prefix:  aws.String(prefix),
+		MaxKeys: aws.Int32(1), // Just check if any objects exist
+	}
+	list, err := s.s3Client.ListObjectsV2(ctx, listParams)
+	switch {
+	case err != nil:
+		return fmt.Errorf("checking for objects: %w", err)
+	case len(list.Contents) > 0:
+		return errs.BadRequest(errs.WithMsg(ErrDirNotEmpty.Error()))
+	}
+
 	params := &s3.DeleteObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(objectKey),
 	}
-	_, err := s.s3Client.DeleteObject(ctx, params)
+	_, err = s.s3Client.DeleteObject(ctx, params)
 	return err
 }
 
