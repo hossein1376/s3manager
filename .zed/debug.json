@@ -1,0 +1,9 @@
+[
+  {
+    "label": "Start server",
+    "adapter": "Delve",
+    "request": "launch",
+    "mode": "debug",
+    "program": "./cmd/s3manager",
+  },
+]
