@@ -42,7 +42,7 @@ func defaults() Config {
 			AccessKeyID:     accessKey,
 			SecretAccessKey: secretKey,
 			Region:          "auto",
-			MaxSizeBytes:    100 * 1024 * 1024 * 1024, // 100mb
+			MaxSizeBytes:    100 * 1024 * 1024, // 100mb
 		},
 		Server: Server{
 			Address:      "0.0.0.0:8080",

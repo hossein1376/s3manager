@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -63,6 +64,8 @@ func Run() error {
 	case err := <-errCh:
 		return fmt.Errorf("server error: %w", err)
 	case <-signalCh:
-		return server.Shutdown(ctx)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return server.Shutdown(shutdownCtx)
 	}
 }

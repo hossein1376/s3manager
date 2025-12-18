@@ -11,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
 
 	"github.com/hossein1376/grape/errs"
@@ -39,10 +40,12 @@ func (s *Services) ListObjects(
 	maxKeys int32,
 	opt model.ListObjectsOption,
 ) ([]model.Object, *string, error) {
-	prefix := opt.Filter
-	if opt.Path != "" {
-		prefix = prefix + opt.Path + "/"
+	prefix := opt.Path
+	if prefix != "" && !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
 	}
+	pathPrefix := prefix
+	prefix += opt.Filter
 	params := &s3.ListObjectsV2Input{
 		Bucket:            aws.String(bucketName),
 		MaxKeys:           aws.Int32(maxKeys),
@@ -57,12 +60,16 @@ func (s *Services) ListObjects(
 		}
 		return nil, nil, err
 	}
-	objects := make([]model.Object, 0, *list.KeyCount)
+	keyCount := int32(0)
+	if list.KeyCount != nil {
+		keyCount = *list.KeyCount
+	}
+	objects := make([]model.Object, 0, keyCount)
 	for _, obj := range list.CommonPrefixes {
 		var key *string
 		if obj.Prefix != nil {
 			key = aws.String(
-				strings.TrimSuffix(strings.TrimPrefix(*obj.Prefix, opt.Path+"/"), "/"),
+				strings.TrimSuffix(strings.TrimPrefix(*obj.Prefix, pathPrefix), "/"),
 			)
 		}
 		objects = append(objects, model.Object{
@@ -77,7 +84,7 @@ func (s *Services) ListObjects(
 			lastModified = aws.String(obj.LastModified.Format(time.DateTime))
 		}
 		if obj.Key != nil {
-			key = aws.String(strings.TrimPrefix(*obj.Key, opt.Path+"/"))
+			key = aws.String(strings.TrimPrefix(*obj.Key, pathPrefix))
 		}
 		objects = append(objects, model.Object{
 			Key:          key,
@@ -136,6 +143,12 @@ func (s *Services) ListBuckets(
 		if idx, err := strconv.Atoi(*opts.ContinuationToken); err == nil {
 			start = idx
 		}
+	}
+	if start < 0 {
+		start = 0
+	}
+	if start > len(allBuckets) {
+		start = len(allBuckets)
 	}
 	end := start + int(count)
 	if end > len(allBuckets) {
@@ -201,14 +214,23 @@ func (s *Services) deleteAllObjects(ctx context.Context, bucketName string) erro
 			return fmt.Errorf("listing objects for deletion: %w", err)
 		}
 		// Delete objects in batches
-		for _, obj := range list.Contents {
-			delParams := &s3.DeleteObjectInput{
-				Bucket: aws.String(bucketName),
-				Key:    obj.Key,
+		if len(list.Contents) > 0 {
+			var objectsToDelete []types.ObjectIdentifier
+			for _, obj := range list.Contents {
+				objectsToDelete = append(objectsToDelete, types.ObjectIdentifier{
+					Key: obj.Key,
+				})
 			}
-			_, err := s.s3Client.DeleteObject(ctx, delParams)
+
+			_, err = s.s3Client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+				Bucket: aws.String(bucketName),
+				Delete: &types.Delete{
+					Objects: objectsToDelete,
+					Quiet:   aws.Bool(true),
+				},
+			})
 			if err != nil {
-				return fmt.Errorf("deleting object %s: %w", *obj.Key, err)
+				return fmt.Errorf("deleting objects: %w", err)
 			}
 		}
 		if list.NextContinuationToken == nil {
@@ -291,14 +313,23 @@ func (s *Services) deleteObjectsWithPrefix(
 			return fmt.Errorf("listing objects for deletion: %w", err)
 		}
 		// Delete objects in batches
-		for _, obj := range list.Contents {
-			delParams := &s3.DeleteObjectInput{
-				Bucket: aws.String(bucketName),
-				Key:    obj.Key,
+		if len(list.Contents) > 0 {
+			var objectsToDelete []types.ObjectIdentifier
+			for _, obj := range list.Contents {
+				objectsToDelete = append(objectsToDelete, types.ObjectIdentifier{
+					Key: obj.Key,
+				})
 			}
-			_, err := s.s3Client.DeleteObject(ctx, delParams)
+
+			_, err = s.s3Client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+				Bucket: aws.String(bucketName),
+				Delete: &types.Delete{
+					Objects: objectsToDelete,
+					Quiet:   aws.Bool(true),
+				},
+			})
 			if err != nil {
-				return fmt.Errorf("deleting object %s: %w", *obj.Key, err)
+				return fmt.Errorf("deleting objects: %w", err)
 			}
 		}
 		if list.NextContinuationToken == nil {

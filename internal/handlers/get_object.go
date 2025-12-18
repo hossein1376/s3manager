@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 
 	"github.com/hossein1376/grape"
 	"github.com/hossein1376/grape/validator"
@@ -55,7 +56,7 @@ func (h *Handler) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set(
 		"Content-Disposition",
-		fmt.Sprintf("attachment; filename=\"%s\"", objectName),
+		fmt.Sprintf("attachment; filename=%q", path.Base(objectName)),
 	)
 	w.Header().Set("Content-Type", contentType)
 
@@ -65,5 +66,4 @@ func (h *Handler) GetObjectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	grape.WriteJSON(ctx, w)
 }

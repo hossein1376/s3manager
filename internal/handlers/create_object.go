@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -64,15 +63,23 @@ func (h *Handler) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
 			slogger.Error(ctx, "closing file", slogger.Err("error", err))
 		}
 	}()
-	data, err := io.ReadAll(file)
-	if err != nil {
-		grape.ExtractFromErr(ctx, w, fmt.Errorf("reading file: %w", err))
+	// Detect mime type using the first 512 bytes
+	buffer := make([]byte, 512)
+	n, err := file.Read(buffer)
+	if err != nil && err != io.EOF {
+		grape.ExtractFromErr(ctx, w, fmt.Errorf("reading file header: %w", err))
 		return
 	}
-	mimeType := mimetype.Detect(data)
+	mimeType := mimetype.Detect(buffer[:n])
+
+	// Seek back to the beginning of the file
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		grape.ExtractFromErr(ctx, w, fmt.Errorf("seeking file: %w", err))
+		return
+	}
 
 	obj, err := h.service.PutObject(
-		ctx, bucketName, objectKey, mimeType.String(), bytes.NewReader(data),
+		ctx, bucketName, objectKey, mimeType.String(), file,
 	)
 	if err != nil {
 		grape.ExtractFromErr(ctx, w, fmt.Errorf("putting object: %w", err))
