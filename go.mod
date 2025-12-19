@@ -10,6 +10,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.10
 	github.com/goccy/go-yaml v1.18.0
 	github.com/hossein1376/grape v0.4.1-0.20251218133026-5612b4d915dd
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
@@ -21,4 +22,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.8.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.7 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

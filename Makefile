@@ -10,6 +10,10 @@ run:
 lint:
 	golangci-lint run
 
+.PHONY: test
+test:
+	go test ./... -v
+
 .PHONY: clean-build
 clean-build:
 	rm -rf ./dist/*
