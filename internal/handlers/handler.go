@@ -1,22 +1,34 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/hossein1376/grape"
 	"github.com/hossein1376/s3manager/internal/config"
-	"github.com/hossein1376/s3manager/internal/services"
+	"github.com/hossein1376/s3manager/internal/model"
 	"github.com/hossein1376/s3manager/ui"
 )
 
+type Service interface {
+	ListObjects(ctx context.Context, bucketName string, maxKeys int32, opt model.ListObjectsOption) ([]model.Object, *string, error)
+	ListBuckets(ctx context.Context, count int32, opts model.ListBucketsOptions) ([]model.Bucket, *string, error)
+	CreateBucket(ctx context.Context, name string) error
+	DeleteBucket(ctx context.Context, name string, recursive bool) error
+	PutObject(ctx context.Context, bucketName, objectKey, mimeType string, r io.Reader) (*model.Object, error)
+	DeleteObject(ctx context.Context, bucketName, objectKey string, recursive bool) error
+	GetObject(ctx context.Context, bucketName, objectKey string) (io.ReadCloser, *string, error)
+}
+
 type Handler struct {
 	cfg     config.Config
-	service *services.Services
+	service Service
 }
 
 func NewServer(
-	cfg config.Config, svc *services.Services,
+	cfg config.Config, svc Service,
 ) (*http.Server, error) {
 	h := &Handler{cfg: cfg, service: svc}
 

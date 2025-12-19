@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -26,11 +27,22 @@ var (
 	ErrInvalidName    = errors.New("invalid bucket name")
 )
 
-type Services struct {
-	s3Client *s3.Client
+type S3Client interface {
+	ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
+	ListBuckets(ctx context.Context, params *s3.ListBucketsInput, optFns ...func(*s3.Options)) (*s3.ListBucketsOutput, error)
+	CreateBucket(ctx context.Context, params *s3.CreateBucketInput, optFns ...func(*s3.Options)) (*s3.CreateBucketOutput, error)
+	DeleteBucket(ctx context.Context, params *s3.DeleteBucketInput, optFns ...func(*s3.Options)) (*s3.DeleteBucketOutput, error)
+	DeleteObjects(ctx context.Context, params *s3.DeleteObjectsInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectsOutput, error)
+	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	DeleteObject(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error)
+	GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 }
 
-func New(s3Client *s3.Client) *Services {
+type Services struct {
+	s3Client S3Client
+}
+
+func New(s3Client S3Client) *Services {
 	return &Services{s3Client: s3Client}
 }
 
@@ -164,43 +176,75 @@ func (s *Services) ListBuckets(
 	return result, nextToken, nil
 }
 
+func mapS3ErrToAppErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := strings.TrimSpace(strings.ToLower(err.Error()))
+	switch {
+	case strings.Contains(msg, "nosuchbucket"), strings.Contains(msg, "nosuchkey"), strings.Contains(msg, "no such bucket"), strings.Contains(msg, "no such key"):
+		return errs.NotFound(errs.WithErr(err))
+	case strings.Contains(msg, "invalidbucketname"), strings.Contains(msg, "invalid bucket name"):
+		return errs.BadRequest(errs.WithErr(err))
+	case strings.Contains(msg, "bucketalreadyownedbyyou"), strings.Contains(msg, "bucketalreadyexists"):
+		return errs.Conflict(errs.WithMsg("Bucket already exists"))
+	case strings.Contains(msg, "bucketnotempty"), strings.Contains(msg, "bucket not empty"):
+		return errs.Conflict(errs.WithMsg("Bucket is not empty"))
+	case strings.Contains(msg, "accessdenied"), strings.Contains(msg, "access denied"):
+		return errs.Forbidden(errs.WithErr(err))
+	case strings.Contains(msg, "slowdown"):
+		return errs.TooMany(errs.WithErr(err))
+	case strings.Contains(msg, "timeout"), strings.Contains(msg, "context deadline exceeded"):
+		return errs.Timeout(errs.WithErr(err))
+	case strings.Contains(msg, "internalerror"), strings.Contains(msg, "internalservererror"):
+		return errs.BadGateway(errs.WithErr(err))
+	case strings.Contains(msg, "invalidargument"):
+		return errs.Internal(errs.WithErr(err))
+	case strings.Contains(msg, "file too large"), strings.Contains(msg, "filetoolarge"), strings.Contains(msg, "entitytoolarge"):
+		return errs.New(http.StatusRequestEntityTooLarge, errs.WithErr(err))
+	case strings.Contains(msg, "serviceunavailable"), strings.Contains(msg, "service unavailable"):
+		return errs.New(http.StatusServiceUnavailable, errs.WithErr(err))
+	default:
+		return errs.BadGateway(errs.WithErr(err))
+	}
+}
+
 func (s *Services) CreateBucket(ctx context.Context, name string) error {
 	params := &s3.CreateBucketInput{
 		Bucket: aws.String(name),
 	}
 	_, err := s.s3Client.CreateBucket(ctx, params)
-	switch {
-	case err == nil:
-		return nil
-	case strings.Contains(err.Error(), "BucketAlreadyOwnedByYou"):
-		return errs.Conflict(errs.WithMsg(ErrExistingBucket.Error()))
-	case strings.Contains(err.Error(), "InvalidBucketName"):
-		return errs.BadRequest(errs.WithMsg(ErrInvalidName.Error()))
-	default:
-		return err
+	if err != nil {
+		return mapS3ErrToAppErr(err)
 	}
+	return nil
 }
 
 func (s *Services) DeleteBucket(ctx context.Context, name string, recursive bool) error {
-	if recursive {
-		// Delete all objects in the bucket first
-		err := s.deleteAllObjects(ctx, name)
-		if err != nil {
-			return fmt.Errorf("deleting objects in bucket: %w", err)
-		}
-	}
 	params := &s3.DeleteBucketInput{
 		Bucket: aws.String(name),
 	}
+
+	// Try deleting bucket first.
 	_, err := s.s3Client.DeleteBucket(ctx, params)
-	switch {
-	case err == nil:
+	if err == nil {
 		return nil
-	case strings.Contains(err.Error(), "BucketNotEmpty"):
-		return errs.Conflict(errs.WithMsg(ErrBucketNotEmpty.Error()))
-	default:
-		return fmt.Errorf("deleting bucket: %w", err)
 	}
+
+	// If bucket isn't empty and recursive flag set, attempt to delete objects then retry.
+	if strings.Contains(err.Error(), "BucketNotEmpty") && recursive {
+		if derr := s.deleteAllObjects(ctx, name); derr != nil {
+			return fmt.Errorf("deleting objects in bucket: %w", derr)
+		}
+		// Retry deleting bucket
+		_, err = s.s3Client.DeleteBucket(ctx, params)
+		if err == nil {
+			return nil
+		}
+	}
+
+	// Map/convert S3 errors to application errs (including upstream mapping).
+	return mapS3ErrToAppErr(err)
 }
 
 func (s *Services) deleteAllObjects(ctx context.Context, bucketName string) error {
@@ -252,12 +296,7 @@ func (s *Services) PutObject(
 	}
 	output, err := s.s3Client.PutObject(ctx, params)
 	if err != nil {
-		switch {
-		case strings.Contains(err.Error(), "NoSuchBucket"):
-			return nil, errs.NotFound(errs.WithMsg(ErrMissingBucket.Error()))
-		default:
-			return nil, err
-		}
+		return nil, mapS3ErrToAppErr(err)
 	}
 
 	return &model.Object{
