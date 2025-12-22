@@ -3,7 +3,7 @@ s3:
   access-key: minio
   secret-access-key: minio123
   region: "auto"
-  max-size-bytes: 107_374_182_400 # 100mb
+  max-size-bytes: 100_000_000 # 100mb
 server:
   address: 0.0.0.0:8080
   read-timeout: 2m
